@@ -125,7 +125,7 @@ async function api(action, data){
   const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key: API_KEY, action, data })
+    body: JSON.stringify({ action, data })
   });
 
   const json = await res.json().catch(() => null);
