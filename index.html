@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Lotus · Admin MVP</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   body{font-family:system-ui;background:#0b0b14;color:#fff;padding:20px}
   .card{background:#141428;padding:16px;border-radius:12px;margin-bottom:16px}
   input,select,button{padding:10px;border-radius:8px;border:none}
+  input,select{min-width:260px}
   button{background:#6c5cff;color:#fff;font-weight:600;cursor:pointer}
-  .row{display:flex;gap:8px;flex-wrap:wrap}
-  .list{margin-top:8px}
-  .item{padding:6px 0;border-bottom:1px solid #333}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  pre{white-space:pre-wrap;word-break:break-word;background:#0f0f1f;padding:10px;border-radius:10px}
+  .muted{opacity:.75}
 </style>
 </head>
 <body>
@@ -19,146 +20,249 @@
 <h2>Lotus · Admin MVP</h2>
 
 <div class="card">
+  <h3>0) Настройки</h3>
+  <div class="row">
+    <input id="api-url" placeholder="GAS Web App URL" />
+    <input id="api-key" placeholder="API_KEY (как в GAS)" />
+    <button id="btn-save-settings" type="button">Сохранить</button>
+    <span class="muted" id="settings-status"></span>
+  </div>
+</div>
+
+<div class="card">
   <h3>1) Создать релиз</h3>
-  <input id="r-title" placeholder="Название релиза">
-  <input id="r-password" placeholder="Пароль артиста">
-  <button onclick="createRelease()">Создать</button>
-  <div id="r-out"></div>
+  <div class="row">
+    <input id="r-title" placeholder="Название релиза" />
+    <input id="r-password" placeholder="Пароль артиста" />
+    <button id="btn-create-release" type="button">Создать</button>
+  </div>
+  <pre id="r-out">—</pre>
 </div>
 
 <div class="card">
   <h3>2) Добавить сообщество</h3>
-  <input id="c-release" placeholder="release_id">
-  <input id="c-id" placeholder="community_id">
-  <input id="c-name" placeholder="community_name">
-  <button onclick="addCommunity()">Добавить</button>
+  <div class="row">
+    <input id="c-release" placeholder="release_id" />
+    <input id="c-id" placeholder="community_id" />
+    <input id="c-name" placeholder="community_name" />
+    <button id="btn-add-community" type="button">Добавить</button>
+  </div>
 </div>
 
 <div class="card">
   <h3>3) Загрузка VK таблиц</h3>
-  <select id="vk-kind">
-    <option value="campaigns">Кампании</option>
-    <option value="groups">Группы</option>
-    <option value="ads">Объявления</option>
-  </select>
-  <input id="vk-release" placeholder="release_id">
-  <input id="vk-community" placeholder="community_id">
-  <input type="file" id="vk-file" accept=".xlsx">
-  <button onclick="uploadVk()">Загрузить</button>
-  <div id="vk-out"></div>
+  <div class="row">
+    <select id="vk-kind">
+      <option value="campaigns">Кампании</option>
+      <option value="groups">Группы</option>
+      <option value="ads">Объявления</option>
+    </select>
+    <input id="vk-release" placeholder="release_id" />
+    <input id="vk-community" placeholder="community_id" />
+    <input type="file" id="vk-file" accept=".xlsx" />
+    <button id="btn-upload-vk" type="button">Загрузить</button>
+  </div>
+  <pre id="vk-out">—</pre>
 </div>
 
 <div class="card">
   <h3>4) Загрузка демо / гео</h3>
-  <select id="dg-kind">
-    <option value="demo">Демография</option>
-    <option value="countries">Страны</option>
-    <option value="cities">Города</option>
-  </select>
-  <input id="dg-release" placeholder="release_id">
-  <input id="dg-community" placeholder="community_id">
-  <input type="file" id="dg-file" accept=".xlsx">
-  <button onclick="uploadDemoGeo()">Загрузить</button>
-  <div id="dg-out"></div>
+  <div class="row">
+    <select id="dg-kind">
+      <option value="demo">Демография</option>
+      <option value="countries">Страны</option>
+      <option value="cities">Города</option>
+    </select>
+    <input id="dg-release" placeholder="release_id" />
+    <input id="dg-community" placeholder="community_id" />
+    <input type="file" id="dg-file" accept=".xlsx" />
+    <button id="btn-upload-dg" type="button">Загрузить</button>
+  </div>
+  <pre id="dg-out">—</pre>
 </div>
 
 <div class="card">
   <h3>5) Загрузка стримов</h3>
-  <input id="s-release" placeholder="release_id">
-  <input type="file" id="s-file" accept=".xlsx">
-  <button onclick="uploadStreams()">Загрузить</button>
-  <div id="s-out"></div>
+  <div class="row">
+    <input id="s-release" placeholder="release_id" />
+    <input type="file" id="s-file" accept=".xlsx" />
+    <button id="btn-upload-streams" type="button">Загрузить</button>
+  </div>
+  <pre id="s-out">—</pre>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyEONkQ7g-lSYRg8WJ_iTC33tP_nlxhHjaYHifwbVXrsllYLOwQYpgTsv-57FLCrAiv/exec";
-const API_KEY = "das2026_9fA3xK2Qm7R8vW5LZB0eC1D4YH6uL";
+/** ---------- Utilities ---------- */
+const $ = (id) => document.getElementById(id);
+
+function setOut(id, obj){
+  $(id).textContent = (typeof obj === 'string') ? obj : JSON.stringify(obj, null, 2);
+}
+
+function loadSettings(){
+  const apiUrl = localStorage.getItem('LOTUS_API_URL') || '';
+  const apiKey = localStorage.getItem('LOTUS_API_KEY') || '';
+  $('api-url').value = apiUrl;
+  $('api-key').value = apiKey;
+}
+
+function saveSettings(){
+  const apiUrl = $('api-url').value.trim();
+  const apiKey = $('api-key').value.trim();
+  localStorage.setItem('LOTUS_API_URL', apiUrl);
+  localStorage.setItem('LOTUS_API_KEY', apiKey);
+  $('settings-status').textContent = 'сохранено';
+  setTimeout(()=> $('settings-status').textContent = '', 1500);
+}
 
 async function api(action, data){
+  const API_URL = (localStorage.getItem('LOTUS_API_URL') || '').trim();
+  const API_KEY = (localStorage.getItem('LOTUS_API_KEY') || '').trim();
+  if (!API_URL) throw new Error('Не задан GAS Web App URL (блок "Настройки")');
+  if (!API_KEY) throw new Error('Не задан API_KEY (блок "Настройки")');
+
   const res = await fetch(API_URL, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ key:API_KEY, action, data })
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key: API_KEY, action, data })
   });
-  return res.json();
+
+  const json = await res.json().catch(() => null);
+  if (!json) throw new Error('Ответ не JSON (проверь деплой GAS и URL)');
+  if (!json.ok) throw new Error(json.error || 'Unknown API error');
+  return json.data;
 }
 
-function createRelease(){
-  api("createRelease",{
-    title: r-title.value,
-    password: r-password.value
-  }).then(r=>{
-    r-out.innerText = JSON.stringify(r,null,2);
-  });
-}
-
-function addCommunity(){
-  api("addCommunity",{
-    release_id: c-release.value,
-    community_id: c-id.value,
-    community_name: c-name.value,
-    sort_order: 1
-  }).then(alertOk);
-}
-
-function readExcel(file, skip){
-  return new Promise((resolve)=>{
+function readExcelFirstSheet(file){
+  return new Promise((resolve, reject) => {
+    if (!file) return reject(new Error('Файл не выбран'));
     const r = new FileReader();
-    r.onload = e=>{
-      const wb = XLSX.read(e.target.result,{type:'binary'});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      let rows = XLSX.utils.sheet_to_json(ws,{header:1});
-      if(skip) rows = rows.slice(skip);
-      resolve(rows);
+    r.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
+        resolve(rows);
+      } catch (err){ reject(err); }
     };
+    r.onerror = reject;
     r.readAsBinaryString(file);
   });
 }
 
+/** ---------- Actions ---------- */
+async function createRelease(){
+  try{
+    const title = $('r-title').value.trim();
+    const password = $('r-password').value.trim();
+    const data = await api("createRelease", { title, password });
+    setOut('r-out', data);
+
+    // удобно: автоподставим release_id в поля ниже
+    if (data.release_id){
+      $('c-release').value = data.release_id;
+      $('vk-release').value = data.release_id;
+      $('dg-release').value = data.release_id;
+      $('s-release').value = data.release_id;
+    }
+  }catch(e){
+    setOut('r-out', 'Ошибка: ' + e.message);
+  }
+}
+
+async function addCommunity(){
+  try{
+    const release_id = $('c-release').value.trim();
+    const community_id = $('c-id').value.trim();
+    const community_name = $('c-name').value.trim();
+    const data = await api("addCommunity", { release_id, community_id, community_name, sort_order: 1 });
+    alert('OK: community added');
+    console.log(data);
+  }catch(e){
+    alert('Ошибка: ' + e.message);
+  }
+}
+
 async function uploadVk(){
-  const rows = await readExcel(vk-file.files[0],0);
-  const header = rows.shift();
-  const data = rows.filter(r=>r.length);
-  const res = await api("uploadVkTable",{
-    kind: vk-kind.value,
-    release_id: vk-release.value,
-    community_id: vk-community.value,
-    header, rows:data
-  });
-  vk-out.innerText = JSON.stringify(res,null,2);
+  try{
+    const kind = $('vk-kind').value;
+    const release_id = $('vk-release').value.trim();
+    const community_id = $('vk-community').value.trim();
+    const file = $('vk-file').files[0];
+
+    const rows = await readExcelFirstSheet(file);
+    const header = rows.shift();
+    const dataRows = rows.filter(r => r && r.length && r.some(v => String(v ?? '').trim() !== ''));
+
+    const resp = await api("uploadVkTable", { kind, release_id, community_id, header, rows: dataRows });
+    setOut('vk-out', resp);
+  }catch(e){
+    setOut('vk-out', 'Ошибка: ' + e.message);
+  }
 }
 
 async function uploadDemoGeo(){
-  const all = await readExcel(dg-file.files[0],0);
-  const meta = all.slice(0,5);
-  const header = all[5];
-  const rows = all.slice(6);
-  const res = await api("uploadDemoGeoTable",{
-    kind: dg-kind.value,
-    release_id: dg-release.value,
-    community_id: dg-community.value,
-    campaign_id: meta[0][1]||"",
-    campaign_name: meta[1][1]||"",
-    period_from: meta[3][1]||"",
-    period_to: meta[4][1]||"",
-    header, rows
-  });
-  dg-out.innerText = JSON.stringify(res,null,2);
+  try{
+    const kind = $('dg-kind').value;
+    const release_id = $('dg-release').value.trim();
+    const community_id = $('dg-community').value.trim();
+    const file = $('dg-file').files[0];
+
+    const all = await readExcelFirstSheet(file);
+
+    const meta = all.slice(0,5);
+    const header = all[5];
+    const rows = all.slice(6).filter(r => r && r.length && r.some(v => String(v ?? '').trim() !== ''));
+
+    // В твоих файлах campaign_id/campaign_name лежат в мета-строках (обычно во 2-й колонке)
+    const campaign_id = String((meta[0] && meta[0][1]) || '').trim();
+    const campaign_name = String((meta[1] && meta[1][1]) || '').trim();
+    const period_from = String((meta[3] && meta[3][1]) || '').trim();
+    const period_to = String((meta[4] && meta[4][1]) || '').trim();
+
+    const resp = await api("uploadDemoGeoTable", {
+      kind, release_id, community_id,
+      campaign_id, campaign_name, period_from, period_to,
+      header, rows
+    });
+    setOut('dg-out', resp);
+  }catch(e){
+    setOut('dg-out', 'Ошибка: ' + e.message);
+  }
 }
 
 async function uploadStreams(){
-  const rows = await readExcel(s-file.files[0],1);
-  const header = ["date","streams_ok","streams_vk","streams_yandex"];
-  const data = rows.filter(r=>r.length);
-  const res = await api("uploadStreams",{
-    release_id: s-release.value,
-    header, rows:data
-  });
-  s-out.innerText = JSON.stringify(res,null,2);
+  try{
+    const release_id = $('s-release').value.trim();
+    const file = $('s-file').files[0];
+    const rows = await readExcelFirstSheet(file);
+
+    // Обычно: [Дата, ok, vk, yandex] — заголовок в первой строке.
+    const headerRow = rows.shift() || [];
+    // Нормализуем заголовки в контракт streams_raw
+    const header = ["date","streams_ok","streams_vk","streams_yandex"];
+
+    const dataRows = rows
+      .filter(r => r && r.length && r.some(v => String(v ?? '').trim() !== ''))
+      .map(r => [r[0] ?? '', r[1] ?? '', r[2] ?? '', r[3] ?? '']);
+
+    const resp = await api("uploadStreams", { release_id, header, rows: dataRows });
+    setOut('s-out', resp);
+  }catch(e){
+    setOut('s-out', 'Ошибка: ' + e.message);
+  }
 }
 
-function alertOk(r){ alert("OK"); console.log(r); }
+/** ---------- Bind UI ---------- */
+loadSettings();
+
+$('btn-save-settings').addEventListener('click', saveSettings);
+$('btn-create-release').addEventListener('click', createRelease);
+$('btn-add-community').addEventListener('click', addCommunity);
+$('btn-upload-vk').addEventListener('click', uploadVk);
+$('btn-upload-dg').addEventListener('click', uploadDemoGeo);
+$('btn-upload-streams').addEventListener('click', uploadStreams);
 </script>
 </body>
 </html>
