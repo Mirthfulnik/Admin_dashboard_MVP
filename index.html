@@ -6,15 +6,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" href="data:,">
 <style>
-  body{font-family:system-ui;background:#0b0b14;color:#fff;padding:20px;max-width:980px;margin:0 auto}
+  :root {
+    --bg:#0b0b14; --card:#141428; --line:#2b2b44; --btn:#6c5cff; --btn2:#2a2a44;
+  }
+  body{font-family:system-ui;background:var(--bg);color:#fff;padding:20px;max-width:980px;margin:0 auto}
   h2{margin:0 0 8px}
   .muted{opacity:.75}
-  .card{background:#141428;padding:16px;border-radius:12px;margin-bottom:14px}
-  input,select,button{padding:10px;border-radius:8px;border:none}
+  .card{background:var(--card);padding:16px;border-radius:12px;margin-bottom:14px}
+  input,select,button{padding:10px;border-radius:10px;border:none}
   input,select{min-width:240px}
-  button{background:#6c5cff;color:#fff;font-weight:700;cursor:pointer}
-  button.secondary{background:#2a2a44}
-  button.danger{background:#ff4d4d}
+  button{background:var(--btn);color:#fff;font-weight:750;cursor:pointer}
+  button.secondary{background:var(--btn2)}
   button:disabled{opacity:.5;cursor:not-allowed}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   pre{white-space:pre-wrap;word-break:break-word;background:#0f0f1f;padding:10px;border-radius:10px;margin:10px 0 0}
@@ -22,10 +24,25 @@
   .pill.ok{background:#1f3a2b}
   .pill.draft{background:#3a2a1f}
   table{width:100%;border-collapse:collapse;margin-top:8px}
-  th,td{border-bottom:1px solid #2b2b44;padding:8px;text-align:left;font-size:13px;vertical-align:top}
-  th{opacity:.8;font-weight:700}
+  th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;font-size:13px;vertical-align:top}
+  th{opacity:.85;font-weight:750}
   .small{font-size:12px}
   .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  .headerRow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .iconBtn{width:40px;min-width:40px;height:40px;padding:0;border-radius:12px;display:inline-flex;align-items:center;justify-content:center}
+  .iconBtn.secondary{background:var(--btn2)}
+  .iconBtn.danger{background:rgba(255,77,77,.15); color:#ffb0b0; border:1px solid rgba(255,77,77,.25)}
+  .iconBtn.danger:hover{background:rgba(255,77,77,.22)}
+  .sectionTitle{margin:0}
+
+  /* Modal */
+  .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:999}
+  .modalBackdrop.open{display:flex}
+  .modal{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:16px;max-width:720px;width:100%;padding:16px}
+  .modalTop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .modalTop h3{margin:0}
+  .modalClose{background:transparent;border:1px solid rgba(255,255,255,.12);color:#fff}
+  .modalClose:hover{border-color:rgba(255,255,255,.22)}
 </style>
 </head>
 <body>
@@ -35,11 +52,33 @@
   Backend: GitHub Pages → Yandex Function → GAS → Google Sheets
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<!-- Modal: Create release -->
+<div id="modal-backdrop" class="modalBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modalTop">
+      <h3 id="modal-title">Создать релиз</h3>
+      <button id="btn-close-modal" class="iconBtn modalClose" type="button" title="Закрыть">✕</button>
+    </div>
 
+    <div class="row" style="margin-top:12px">
+      <input id="r-title" placeholder="Название релиза" />
+      <input id="r-password" placeholder="Пароль артиста" />
+      <button id="btn-create-release" type="button">Создать</button>
+      <button id="btn-cancel-create" class="secondary" type="button">Отмена</button>
+    </div>
+
+    <pre id="r-out">—</pre>
+
+    <div class="muted small" style="margin-top:8px">
+      Логин (slug) генерируется автоматически. Пока релиз не опубликован, артист его не увидит.
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script>
 /** ===============================
- *  CONFIG (замени на свой endpoint)
+ *  CONFIG
  *  =============================== */
 const API_URL = "https://functions.yandexcloud.net/d4evbekf5us7hbjid3m3";
 
@@ -49,7 +88,6 @@ function esc_(s){ return String(s ?? '').replace(/[&<>"']/g, m=>({ "&":"&amp;","
 function setOut(id, obj){ $(id).textContent = (typeof obj === 'string') ? obj : JSON.stringify(obj, null, 2); }
 
 async function api(action, data){
-  if (!API_URL || API_URL.includes('PASTE_')) throw new Error('Не задан API_URL (endpoint Yandex Function).');
   const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type":"application/json" },
@@ -115,6 +153,22 @@ function getCommunitiesForRelease_(release_id){
     .sort((a,b)=>a.sort_order-b.sort_order);
 }
 
+/** ---------- Modal control ---------- */
+function openCreateModal(){
+  $('modal-backdrop').classList.add('open');
+  $('modal-backdrop').setAttribute('aria-hidden','false');
+  $('r-title').focus();
+}
+function closeCreateModal(){
+  $('modal-backdrop').classList.remove('open');
+  $('modal-backdrop').setAttribute('aria-hidden','true');
+}
+function clearCreateModal(){
+  $('r-title').value = '';
+  $('r-password').value = '';
+  setOut('r-out','—');
+}
+
 /** ---------- Rendering ---------- */
 function renderReleaseSelect(){
   const ridx = idx_(state.releasesHeader,'release_id');
@@ -177,7 +231,6 @@ function renderSelectedRelease(){
   `;
 
   $('btn-publish').textContent = published ? 'Снять с публикации' : 'Опубликовать';
-  $('btn-publish').className = published ? 'danger' : '';
   $('btn-publish').disabled = false;
 
   renderCommunityList();
@@ -196,9 +249,7 @@ function renderCommunityList(){
       <td>${esc_(c.community_name)}</td>
       <td class="small muted">${esc_(c.sort_order)}</td>
       <td>
-        <button class="secondary" type="button" onclick="selectCommunity('${esc_(c.community_id)}')">
-          Выбрать для загрузок
-        </button>
+        <button class="secondary" type="button" onclick="selectCommunity('${esc_(c.community_id)}')">Выбрать</button>
       </td>
     </tr>
   `).join('');
@@ -206,7 +257,7 @@ function renderCommunityList(){
   $('community-list').innerHTML = `
     <table>
       <thead><tr>
-        <th>community_id</th><th>Название</th><th>sort</th><th>Действие</th>
+        <th>community_id</th><th>Название</th><th>sort</th><th>Для загрузок</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -311,7 +362,7 @@ async function togglePublish(){
   }
 }
 
-/** ---------- Upload / Delete (separate cards) ---------- */
+/** ---------- Upload / Delete ---------- */
 function getCtx_(){
   const release_id = $('upload-release-id').value.trim();
   const community_id = $('community-id').value.trim();
@@ -423,137 +474,150 @@ async function deleteStreams(){
 
 <!-- A) Релизы -->
 <div class="card">
-  <div class="row" style="justify-content:space-between">
-    <h3 style="margin:0">A) Релизы</h3>
-    <button id="btn-refresh" class="secondary" type="button">Обновить</button>
+  <div class="headerRow">
+    <div class="row">
+      <h3 class="sectionTitle">A) Релизы</h3>
+      <button id="btn-refresh" class="iconBtn secondary" type="button" title="Обновить">↻</button>
+    </div>
+    <div class="row">
+      <button id="btn-open-create" class="iconBtn" type="button" title="Создать релиз">＋</button>
+      <button id="btn-publish" type="button" disabled>Опубликовать</button>
+    </div>
   </div>
 
   <div class="row" style="margin-top:10px">
     <select id="release-select"></select>
-    <button id="btn-publish" type="button" disabled>Опубликовать</button>
   </div>
 
   <div style="margin-top:10px" id="selected-release"></div>
   <div class="muted small" id="global-status" style="margin-top:10px;opacity:.75">—</div>
 </div>
 
-<!-- B) Создать релиз -->
+<!-- B) Сообщества -->
 <div class="card">
-  <h3 style="margin-top:0">B) Создать релиз</h3>
-  <div class="row">
-    <input id="r-title" placeholder="Название релиза" />
-    <input id="r-password" placeholder="Пароль артиста" />
-    <button id="btn-create-release" type="button">Создать</button>
-  </div>
-  <pre id="r-out">—</pre>
-</div>
-
-<!-- C) Сообщества -->
-<div class="card">
-  <h3 style="margin-top:0">C) Сообщества выбранного релиза</h3>
-  <div class="row">
+  <h3 class="sectionTitle">B) Сообщества выбранного релиза</h3>
+  <div class="row" style="margin-top:10px">
     <input id="community-release-id" placeholder="release_id (авто)" readonly />
     <input id="c-id" placeholder="community_id" />
     <input id="c-name" placeholder="community_name" />
-    <button id="btn-add-community" type="button">Добавить сообщество</button>
+    <button id="btn-add-community" type="button">Добавить</button>
   </div>
   <div id="community-list"></div>
 
   <div class="row" style="margin-top:10px">
     <input id="upload-release-id" placeholder="release_id (авто)" readonly />
-    <input id="community-id" placeholder="community_id (выбрать выше)" />
-    <span class="muted small">Для загрузок/удалений выбирай community_id в таблице сообществ.</span>
+    <input id="community-id" placeholder="community_id (выбрать в таблице)" />
+    <span class="muted small">Для загрузок/удалений выбери community_id кнопкой «Выбрать».</span>
   </div>
 </div>
 
-<!-- D) Кампании -->
 <div class="card">
-  <h3 style="margin-top:0">D) Кампании (VK)</h3>
-  <div class="row">
+  <div class="headerRow">
+    <h3 class="sectionTitle">C) Кампании (VK)</h3>
+    <button class="iconBtn danger" type="button" onclick="deleteRaw('campaigns','out-campaigns')" title="Удалить прикреплённую таблицу">✕</button>
+  </div>
+  <div class="row" style="margin-top:10px">
     <input type="file" id="file-campaigns" accept=".xlsx" />
     <button type="button" onclick="uploadVkKind('campaigns','file-campaigns','out-campaigns')">Загрузить</button>
-    <button class="danger" type="button" onclick="deleteRaw('campaigns','out-campaigns')">Удалить прикреплённую таблицу</button>
   </div>
   <pre id="out-campaigns">—</pre>
 </div>
 
-<!-- E) Группы -->
 <div class="card">
-  <h3 style="margin-top:0">E) Группы (VK)</h3>
-  <div class="row">
+  <div class="headerRow">
+    <h3 class="sectionTitle">D) Группы (VK)</h3>
+    <button class="iconBtn danger" type="button" onclick="deleteRaw('groups','out-groups')" title="Удалить прикреплённую таблицу">✕</button>
+  </div>
+  <div class="row" style="margin-top:10px">
     <input type="file" id="file-groups" accept=".xlsx" />
     <button type="button" onclick="uploadVkKind('groups','file-groups','out-groups')">Загрузить</button>
-    <button class="danger" type="button" onclick="deleteRaw('groups','out-groups')">Удалить прикреплённую таблицу</button>
   </div>
   <pre id="out-groups">—</pre>
 </div>
 
-<!-- F) Объявления -->
 <div class="card">
-  <h3 style="margin-top:0">F) Объявления (VK)</h3>
-  <div class="row">
+  <div class="headerRow">
+    <h3 class="sectionTitle">E) Объявления (VK)</h3>
+    <button class="iconBtn danger" type="button" onclick="deleteRaw('ads','out-ads')" title="Удалить прикреплённую таблицу">✕</button>
+  </div>
+  <div class="row" style="margin-top:10px">
     <input type="file" id="file-ads" accept=".xlsx" />
     <button type="button" onclick="uploadVkKind('ads','file-ads','out-ads')">Загрузить</button>
-    <button class="danger" type="button" onclick="deleteRaw('ads','out-ads')">Удалить прикреплённую таблицу</button>
   </div>
   <pre id="out-ads">—</pre>
 </div>
 
-<!-- G) Демография -->
 <div class="card">
-  <h3 style="margin-top:0">G) Демография (VK)</h3>
-  <div class="row">
+  <div class="headerRow">
+    <h3 class="sectionTitle">F) Демография (VK)</h3>
+    <button class="iconBtn danger" type="button" onclick="deleteRaw('demo','out-demo')" title="Удалить прикреплённую таблицу">✕</button>
+  </div>
+  <div class="row" style="margin-top:10px">
     <input type="file" id="file-demo" accept=".xlsx" />
     <button type="button" onclick="uploadDemoGeoKind('demo','file-demo','out-demo')">Загрузить</button>
-    <button class="danger" type="button" onclick="deleteRaw('demo','out-demo')">Удалить прикреплённую таблицу</button>
   </div>
   <pre id="out-demo">—</pre>
 </div>
 
-<!-- H) Страны -->
 <div class="card">
-  <h3 style="margin-top:0">H) Страны (VK)</h3>
-  <div class="row">
+  <div class="headerRow">
+    <h3 class="sectionTitle">G) Страны (VK)</h3>
+    <button class="iconBtn danger" type="button" onclick="deleteRaw('countries','out-countries')" title="Удалить прикреплённую таблицу">✕</button>
+  </div>
+  <div class="row" style="margin-top:10px">
     <input type="file" id="file-countries" accept=".xlsx" />
     <button type="button" onclick="uploadDemoGeoKind('countries','file-countries','out-countries')">Загрузить</button>
-    <button class="danger" type="button" onclick="deleteRaw('countries','out-countries')">Удалить прикреплённую таблицу</button>
   </div>
   <pre id="out-countries">—</pre>
 </div>
 
-<!-- I) Города -->
 <div class="card">
-  <h3 style="margin-top:0">I) Города (VK)</h3>
-  <div class="row">
+  <div class="headerRow">
+    <h3 class="sectionTitle">H) Города (VK)</h3>
+    <button class="iconBtn danger" type="button" onclick="deleteRaw('cities','out-cities')" title="Удалить прикреплённую таблицу">✕</button>
+  </div>
+  <div class="row" style="margin-top:10px">
     <input type="file" id="file-cities" accept=".xlsx" />
     <button type="button" onclick="uploadDemoGeoKind('cities','file-cities','out-cities')">Загрузить</button>
-    <button class="danger" type="button" onclick="deleteRaw('cities','out-cities')">Удалить прикреплённую таблицу</button>
   </div>
   <pre id="out-cities">—</pre>
 </div>
 
-<!-- J) Стримы -->
 <div class="card">
-  <h3 style="margin-top:0">J) Стримы (на весь релиз)</h3>
-  <div class="row">
+  <div class="headerRow">
+    <h3 class="sectionTitle">I) Стримы (на весь релиз)</h3>
+    <button class="iconBtn danger" type="button" onclick="deleteStreams()" title="Удалить стримы">✕</button>
+  </div>
+  <div class="row" style="margin-top:10px">
     <input id="streams-release-id" placeholder="release_id (авто)" readonly />
     <input type="file" id="streams-file" accept=".xlsx" />
     <button type="button" onclick="uploadStreams()">Загрузить</button>
-    <button class="danger" type="button" onclick="deleteStreams()">Удалить стримы</button>
   </div>
   <pre id="streams-out">—</pre>
 </div>
 
 <script>
-/** ---------- Bind UI ---------- */
-$('btn-refresh').addEventListener('click', refresh);
-$('release-select').addEventListener('change', onSelectRelease);
-$('btn-create-release').addEventListener('click', createRelease);
-$('btn-add-community').addEventListener('click', addCommunity);
-$('btn-publish').addEventListener('click', togglePublish);
+  // Bind UI
+  $('btn-refresh').addEventListener('click', refresh);
+  $('release-select').addEventListener('change', onSelectRelease);
+  $('btn-add-community').addEventListener('click', addCommunity);
+  $('btn-publish').addEventListener('click', togglePublish);
 
-/** ---------- Init ---------- */
-refresh();
+  // Modal bindings
+  $('btn-open-create').addEventListener('click', () => { clearCreateModal(); openCreateModal(); });
+  $('btn-close-modal').addEventListener('click', closeCreateModal);
+  $('btn-cancel-create').addEventListener('click', closeCreateModal);
+  $('modal-backdrop').addEventListener('click', (e) => { if (e.target === $('modal-backdrop')) closeCreateModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCreateModal(); });
+
+  $('btn-create-release').addEventListener('click', async () => {
+    await createRelease();
+    const txt = $('r-out').textContent || '';
+    if (!txt.startsWith('Ошибка:')) closeCreateModal();
+  });
+
+  // Init
+  refresh();
 </script>
 
 </body>
