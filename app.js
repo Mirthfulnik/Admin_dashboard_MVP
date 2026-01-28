@@ -878,14 +878,23 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
   }
 
   function calcKpisFromAdsRows_(rows){
+    const col_ = (row, keys)=>{
+      for (const k of keys){
+        if (row && row[k] != null && row[k] !== "") return row[k];
+      }
+      return "";
+    };
+
     let spent=0, shows=0, listens=0, adds=0;
     const groupIds = new Set();
-    for (const row of rows){
-      spent += num_(row["Потрачено всего, ₽"]);
-      shows += num_(row["Показы"]);
-      listens += num_(row["Начали прослушивание"]);
-      adds += num_(row["Добавили аудио"]);
-      const gid = (row["ID группы"] ?? "").toString().trim();
+    for (const row0 of rows){
+      const row = normalizeRowKeys_(row0 || {});
+      spent   += num_(col_(row, ["Потрачено всего, ₽","Потрачено всего, Р","Потрачено всего","Расход, ₽","Расход, Р"]));
+      shows   += num_(col_(row, ["Показы","Показов"]));
+      listens += num_(col_(row, ["Начали прослушивание","Прослушивания","Начали прослушивание аудио"]));
+      adds    += num_(col_(row, ["Добавили аудио","Добавления аудио","Добавили"]));
+
+      const gid = (col_(row, ["ID группы","ID группы объявления","ID группы (объявление)"]) ?? "").toString().trim();
       if (gid) groupIds.add(gid);
     }
     const avgCost = safeDiv_(spent, adds);
@@ -963,7 +972,7 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     const el = sheet_(true);
     const inner = el.querySelector(".sheetInner");
     inner.insertAdjacentHTML("beforeend", `<div class="sheetTitle" style="font-size:28px">Детализация: ${escapeHtml_(c.name)}</div>`);
-    const rows = (c.adsRows||[]).slice(0,18); // чтобы влезло на страницу
+    const rows = (c.adsRows||[]);
     const table = document.createElement("table");
     table.className = "table";
     table.innerHTML = `
@@ -981,12 +990,13 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     `;
     const tb = table.querySelector("tbody");
     for (const row of rows){
-      const spent = num_(row["Потрачено всего, ₽"]);
-      const adds = num_(row["Добавили аудио"]);
+      const r2 = normalizeRowKeys_(row||{});
+      const spent = num_(r2["Потрачено всего, ₽"] ?? r2["Потрачено всего, Р"] ?? r2["Потрачено всего"] ?? "");
+      const adds = num_(r2["Добавили аудио"] ?? r2["Добавления аудио"] ?? r2["Добавили"] ?? "");
       const avg = safeDiv_(spent, adds);
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml_(String(row["Название объявления"]||row["ID объявления"]||"—"))}</td>
+        <td>${escapeHtml_(String(r2["Название объявления"]||r2["ID объявления"]||r2["ID объявления"]||"—"))}</td>
         <td>${formatMoney_(spent)}</td>
         <td>${formatInt_(num_(row["Показы"]))}</td>
         <td>${formatInt_(num_(row["Начали прослушивание"]))}</td>
@@ -1009,8 +1019,34 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     const agg = aggregateDemo_(demo);
 
     // Charts as simple SVG bars (stable in print)
-    inner.appendChild(svgBarChart_("Распределение по полу (Показы)", agg.genderImpr));
-    inner.appendChild(svgBarChart_("Распределение по возрасту (Показы)", agg.ageImpr));
+    // Пол: показы vs клики
+    const genderCats = ["Мужчины","Женщины","Пол не указан","Итого:"];
+    const genderImpr = {...agg.genderImpr};
+    const genderClicks = {...agg.genderClicks};
+    genderImpr["Итого:"] = sumObj_(agg.genderImpr);
+    genderClicks["Итого:"] = sumObj_(agg.genderClicks);
+
+    inner.appendChild(svgGroupedBarChart_("Распределение по полу", genderCats, [
+      {name:"Показы", data: genderImpr},
+      {name:"Клики", data: genderClicks}
+    ]));
+
+    // Возраст: показы/клики по полу
+    const ageOrder = ["до 17","18-24","25-34","35-44","45-54","55-64","65+"];
+    const mk = (g, field)=>{
+      const out = {};
+      for (const a of ageOrder){
+        out[a] = ((agg.ageGender[a] && agg.ageGender[a][g]) ? agg.ageGender[a][g][field] : 0);
+      }
+      return out;
+    };
+    inner.appendChild(svgGroupedBarChart_("Распределение по возрасту", ageOrder, [
+      {name:"Мужчины · Показы", data: mk("Мужчины","impr")},
+      {name:"Мужчины · Клики", data: mk("Мужчины","clicks")},
+      {name:"Женщины · Показы", data: mk("Женщины","impr")},
+      {name:"Женщины · Клики", data: mk("Женщины","clicks")}
+    ]));
+
 
     // Detail block
     const totalImpr = sumObj_(agg.genderImpr);
@@ -1060,14 +1096,13 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     tab.className = "table";
     tab.innerHTML = `<thead><tr><th>Дата</th><th>VK</th></tr></thead><tbody></tbody>`;
     const tb = tab.querySelector("tbody");
-    for (const s of rows.slice(0,18)){
+    for (const s of rows){
       const tr = document.createElement("tr");
       tr.innerHTML = `<td>${escapeHtml_(fmtDateShort_(s.dateISO))}</td><td>${formatInt_(s.vk)}</td>`;
       tb.appendChild(tr);
     }
     inner.appendChild(tab);
-    inner.insertAdjacentHTML("beforeend", `<div style="margin-top:10px; font-size:12px; opacity:.75">Показаны первые 18 дней (MVP).</div>`);
-    return el;
+        return el;
   }
 
   function renderSimpleTable_(headers, rows){
@@ -1146,12 +1181,20 @@ async function readXlsx_(file){
     const wb = await readXlsx_(file);
     const sheetName = wb.SheetNames.includes("Объявления") ? "Объявления" : wb.SheetNames[0];
     const ws = wb.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json(ws, {defval:""});
-    if (!json.length) throw new Error("empty ads");
+    const jsonRaw = XLSX.utils.sheet_to_json(ws, {defval:""});
+    if (!jsonRaw.length) throw new Error("empty ads");
+
+    // Normalize column names to avoid issues with NBSP / trailing spaces / "₽ " etc.
+    const json = jsonRaw.map(normalizeRowKeys_).map(r=>{
+      // aliases for common header variants
+      if (r["Потрачено всего, ₽"]==null && r["Потрачено всего, Р"]!=null) r["Потрачено всего, ₽"] = r["Потрачено всего, Р"];
+      if (r["Цена за результат, ₽"]==null && r["Цена за результат, Р"]!=null) r["Цена за результат, ₽"] = r["Цена за результат, Р"];
+      return r;
+    });
+
     // minimal sanity check
-    const sample = json[0];
-    if (!("Показы" in sample) && !("Потрачено всего, ₽" in sample)){
-      // still allow but warn
+    const sample = json[0] || {};
+    if (!("Показы" in sample) && !("Потрачено всего, ₽" in sample) && !("Потрачено всего, Р" in sample)){
       console.warn("Ads columns unexpected:", Object.keys(sample));
     }
     return json;
@@ -1163,7 +1206,12 @@ async function readXlsx_(file){
 
   // Пропускаем первые 5 строк (служебные), 6-я строка становится заголовками
   const jsonRaw = XLSX.utils.sheet_to_json(ws, { defval:"", range: 5 });
-  const json = jsonRaw.map(normalizeRowKeys_);
+  const json = jsonRaw.map(normalizeRowKeys_).map(r=>{
+      // aliases for common header variants
+      if (r["Потрачено всего, ₽"]==null && r["Потрачено всего, Р"]!=null) r["Потрачено всего, ₽"] = r["Потрачено всего, Р"];
+      if (r["Цена за результат, ₽"]==null && r["Цена за результат, Р"]!=null) r["Цена за результат, ₽"] = r["Цена за результат, Р"];
+      return r;
+    });
 
   if (!json.length) throw new Error("empty demo");
 
@@ -1197,36 +1245,41 @@ async function readXlsx_(file){
   function aggregateDemo_(rows){
     const genderImpr = {};
     const genderClicks = {};
-    const genderCost = {}; // avg cost per gender (weighted by result?) MVP: average of non-empty cost
+    const genderCost = {}; // avg cost per gender (simple mean of non-empty)
     const genderCostAgg = {}; // {sum, n}
-    const ageImpr = {};
-    for (const row of rows){
+
+    // age -> gender -> {impr, clicks}
+    const ageGender = {};
+
+    for (const row0 of rows){
+      const row = normalizeRowKeys_(row0 || {});
       const g = normalizeGender_(row["Пол"]);
       const a = normalizeAge_(row["Возраст"]);
       const impr = num_(row["Показы"]);
       const clicks = num_(row["Клики"]);
-      const cost = numOrNull_(
-  row["Цена за результат, ₽"] ??
-  row["Цена за результат, Р"] ??
-  row["Цена за результат"] ??
-  row[normKey_("Цена за результат, ₽")] ??
-  row[normKey_("Цена за результат, Р")] ??
-  ""
-);
+      const cost = numOrNull_(row["Цена за результат, ₽"] ?? row["Цена за результат, Р"] ?? row["Цена за результат"] ?? "");
+
       genderImpr[g] = (genderImpr[g]||0) + impr;
       genderClicks[g] = (genderClicks[g]||0) + clicks;
-      ageImpr[a] = (ageImpr[a]||0) + impr;
+
+      ageGender[a] = ageGender[a] || {};
+      ageGender[a][g] = ageGender[a][g] || {impr:0, clicks:0};
+      ageGender[a][g].impr += impr;
+      ageGender[a][g].clicks += clicks;
+
       if (cost!=null){
         genderCostAgg[g] = genderCostAgg[g] || {sum:0,n:0};
         genderCostAgg[g].sum += cost;
         genderCostAgg[g].n += 1;
       }
     }
+
     for (const k of Object.keys(genderCostAgg)){
       const it = genderCostAgg[k];
       genderCost[k] = it.n ? (it.sum/it.n) : null;
     }
-    return { genderImpr, genderClicks, genderCost, ageImpr };
+
+    return { genderImpr, genderClicks, genderCost, ageGender };
   }
 
   /** -----------------------------
@@ -1300,6 +1353,85 @@ async function readXlsx_(file){
     return svg;
   }
 
+
+  function svgGroupedBarChart_(title, categories, series, opts={}){
+    const w = 1000, h = 200, pad = 30;
+    const svgBox = document.createElement("div");
+    svgBox.className = "chartBox";
+
+    const legend = series.map((s, i)=>`<span style="display:inline-flex; align-items:center; gap:6px; margin-right:14px">
+      <span style="width:10px; height:10px; border-radius:3px; background:rgba(122,101,255,${0.25 + i*0.18}); display:inline-block"></span>
+      <span>${escapeHtml_(s.name)}</span>
+    </span>`).join("");
+
+    svgBox.innerHTML = `
+      <div class="chartTitle" style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px">
+        <span>${escapeHtml_(title)}</span>
+        <span style="font-size:12px; opacity:.75; white-space:nowrap">${legend}</span>
+      </div>
+    `;
+
+    const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svgEl.classList.add("svgChart");
+
+    const values = [];
+    for (const cat of categories){
+      for (const s of series){
+        values.push(Number((s.data && s.data[cat]) || 0));
+      }
+    }
+    const max = Math.max(1, ...values);
+
+    const groupW = (w - pad*2) / Math.max(1, categories.length);
+    const barGap = 6;
+    const barW = (groupW - barGap*(series.length-1)) / Math.max(1, series.length);
+
+    // baseline
+    const base = document.createElementNS("http://www.w3.org/2000/svg","line");
+    base.setAttribute("x1", pad);
+    base.setAttribute("x2", w-pad);
+    base.setAttribute("y1", h-pad);
+    base.setAttribute("y2", h-pad);
+    base.setAttribute("stroke", "rgba(255,255,255,.25)");
+    base.setAttribute("stroke-width", "2");
+    svgEl.appendChild(base);
+
+    categories.forEach((cat, ci)=>{
+      const gx = pad + ci*groupW;
+
+      series.forEach((s, si)=>{
+        const v = Number((s.data && s.data[cat]) || 0);
+        const bh = (v/max) * (h - pad*2);
+        const x = gx + si*(barW+barGap);
+        const y = (h-pad) - bh;
+
+        const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        r.setAttribute("x", x);
+        r.setAttribute("y", y);
+        r.setAttribute("width", barW);
+        r.setAttribute("height", bh);
+        r.setAttribute("rx", "10");
+        r.setAttribute("fill", `rgba(122,101,255,${0.25 + si*0.18})`);
+        svgEl.appendChild(r);
+      });
+
+      // label
+      const tx = document.createElementNS("http://www.w3.org/2000/svg","text");
+      tx.setAttribute("x", gx + groupW/2);
+      tx.setAttribute("y", h - 10);
+      tx.setAttribute("text-anchor", "middle");
+      tx.setAttribute("font-size", "12");
+      tx.setAttribute("fill", "rgba(255,255,255,.75)");
+      tx.textContent = cat;
+      svgEl.appendChild(tx);
+    });
+
+    svgBox.appendChild(svgEl);
+    return svgBox;
+  }
+
+
   function svgLineChart_(title, points){
     const w = 1000, h = 220, pad = 30;
     const svg = document.createElement("div");
@@ -1358,7 +1490,22 @@ async function readXlsx_(file){
       svgEl.appendChild(dot);
     });
 
-    svg.appendChild(svgEl);
+    
+    // X-axis labels (dd.mm)
+    const step = Math.max(1, Math.ceil((n-1)/10));
+    for (let i=0;i<n;i++){
+      if (i % step !== 0 && i !== n-1) continue;
+      const px = pad + i*xStep;
+      const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+      t.setAttribute("x", px);
+      t.setAttribute("y", h - 8);
+      t.setAttribute("text-anchor", "middle");
+      t.setAttribute("font-size", "12");
+      t.setAttribute("fill", "rgba(255,255,255,.75)");
+      t.textContent = fmtDateShort_(points[i].x);
+      svgEl.appendChild(t);
+    }
+svg.appendChild(svgEl);
     return svg;
   }
 
@@ -1410,9 +1557,21 @@ async function readXlsx_(file){
   }
 
   function num_(v){
-    if (v == null) return 0;
+    // Robust number parser for VK exports (handles spaces, NBSP, ₽, %, etc.)
+    if (v == null || v === "") return 0;
     if (typeof v === "number") return isFinite(v) ? v : 0;
-    const s = String(v).replace(/\s/g,"").replace(",",".");
+    let s = String(v)
+      .replace(/\u00A0/g, " ")
+      .trim();
+    // keep digits, minus, dot, comma
+    s = s.replace(/[^0-9,\.\-]/g, "");
+    // if both comma and dot exist, assume comma is thousands separator -> remove commas
+    if (s.includes(",") && s.includes(".")){
+      s = s.replace(/,/g, "");
+    }else{
+      // otherwise treat comma as decimal separator
+      s = s.replace(/,/g, ".");
+    }
     const n = Number(s);
     return isFinite(n) ? n : 0;
   }
