@@ -60,6 +60,13 @@
     const v = Math.round(n);
     return v.toLocaleString("ru-RU") + " ₽";
   }
+   function formatMoney2_(n){
+  if (!isFinite(n)) return "—";
+  return new Intl.NumberFormat("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(Number(n)) + " ₽";
+  }
   function formatInt_(n){
     if (!isFinite(n)) return "—";
     const v = Math.round(n);
@@ -917,12 +924,12 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
 
     inner.insertAdjacentHTML("beforeend", `
       <div class="kpiGrid">
-        <div class="kpi"><div class="kpiLabel">Потрачено всего</div><div class="kpiValue">${formatMoney_(k.spent)}</div></div>
+        <div class="kpi"><div class="kpiLabel">Потрачено всего</div><div class="kpiValue">${formatMoney2_(k.spent)}</div></div>
         <div class="kpi"><div class="kpiLabel">Показы</div><div class="kpiValue">${formatInt_(k.shows)}</div></div>
         <div class="kpi"><div class="kpiLabel">Прослушивания</div><div class="kpiValue">${formatInt_(k.listens)}</div></div>
         <div class="kpi"><div class="kpiLabel">Добавления</div><div class="kpiValue">${formatInt_(k.adds)}</div></div>
         <div class="kpi"><div class="kpiLabel">Сегменты</div><div class="kpiValue">${formatInt_(k.segments)}</div></div>
-        <div class="kpi"><div class="kpiLabel">Ср. стоимость добавления</div><div class="kpiValue">${k.avgCost==null ? "—" : formatMoney_(k.avgCost)}</div></div>
+        <div class="kpi"><div class="kpiLabel">Ср. стоимость добавления</div><div class="kpiValue">${k.avgCost==null ? "—" : formatMoney2_(k.avgCost)}</div></div>
       </div>
     `);
 
@@ -936,7 +943,7 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
         ["Сообщество","Потрачено","Показы","Прослуш.","Добавл.","Сегм.","Ср.цена добав."],
         rows.map(x=>[
           x.name,
-          formatMoney_(x.spent),
+          formatMoney2_(x.spent),
           formatInt_(x.shows),
           formatInt_(x.listens),
           formatInt_(x.adds),
@@ -997,11 +1004,11 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${escapeHtml_(String(r2["Название объявления"]||r2["ID объявления"]||r2["ID объявления"]||"—"))}</td>
-        <td>${formatMoney_(spent)}</td>
+        <td>${formatMoney2_(spent)}</td>
         <td>${formatInt_(num_(row["Показы"]))}</td>
         <td>${formatInt_(num_(row["Начали прослушивание"]))}</td>
         <td>${formatInt_(adds)}</td>
-        <td>${avg==null?"—":formatMoney_(avg)}</td>
+        <td>${avg==null?"—":formatMoney2_(avg)}</td>
       `;
       tb.appendChild(tr);
     }
