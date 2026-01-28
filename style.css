@@ -208,8 +208,11 @@ body{
 #report-root{margin-top:12px}
 /* Светлая зона отчёта (превью/печать) */
 #page-report.report-light{
-  background: rgb(176,176,176);
+  background: transparent;
   color: rgb(0,0,0);
+}
+#report-root{
+  padding: 32px 0 64px;
 }
 #page-report.report-light .pageHead h1,
 #page-report.report-light .hint{ color: rgb(0,0,0); }
