@@ -206,6 +206,45 @@ body{
    REPORT (print-ready)
 -------------------------- */
 #report-root{margin-top:12px}
+/* -------------------------
+
+/* ВАЖНО: возвращаем “лист” отчёта. Иначе фон прозрачный и виден тёмный body */
+.pageSheet{
+  width: 1123px; /* ~A4 landscape at 96dpi */
+  height: 794px;
+  margin: 0 auto 14px;
+
+  /* Твои требования */
+  background: rgb(176,176,176);
+  color: rgb(0,0,0);
+
+  border-radius: 10px;
+  overflow:hidden;
+  border:1px solid rgba(0,0,0,.12);
+  box-shadow: 0 18px 60px rgba(0,0,0,.22);
+
+  /* чтобы браузер не “упрощал” цвета при печати */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* На всякий случай фиксируем чёрный текст внутри листа */
+.pageSheet *{ color: inherit; }
+.pageSheet .muted{ color: rgba(0,0,0,.65); }
+
+/* Таблицы/карточки внутри листа — под светлый лист */
+.pageSheet .kpi,
+.pageSheet .table,
+.pageSheet .chartBox{
+  border-color: rgba(0,0,0,.12);
+}
+.pageSheet .table th{
+  background: rgba(255,255,255,.55);
+}
+.pageSheet .creativeImg{
+  background: rgba(255,255,255,.55);
+}
+
 @media print{
   body{background:#fff}
   .topbar, .footer, .pageHead, .hint {display:none !important}
@@ -269,6 +308,10 @@ body{
   .pageSheet{
     width:auto; height:auto; margin:0; border:none; border-radius:0; box-shadow:none;
     page-break-after: always;
+    background: rgb(176,176,176) !important;
+    color: rgb(0,0,0) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 
