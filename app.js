@@ -1043,9 +1043,6 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     // Charts as simple SVG bars (stable in print)
     // Пол: показы/клики (оверлей) + таблица справа как в ВК
 const genderCats = ["Мужчины","Женщины","Пол не указан"];
-const genderImpr = {...agg.genderImpr};
-const genderClicks = {...agg.genderClicks};
-
 const totalImpr = sumObj_(agg.genderImpr);
 const totalClicks = sumObj_(agg.genderClicks);
 
