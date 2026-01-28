@@ -206,18 +206,19 @@ body{
    REPORT (print-ready)
 -------------------------- */
 #report-root{margin-top:12px}
-/* Светлая зона отчёта (превью/печать) */
+
+/* REPORT page: фон вокруг листов = фон сервиса (как в остальных страницах).
+   Светлым остаётся только сам лист (.pageSheet). */
 #page-report.report-light{
-  background: transparent;
-  color: rgb(0,0,0);
+  background: transparent !important;
+  color: inherit !important;
 }
-#report-root{
-  padding: 32px 0 64px;
-}
+
+/* Шапка/подсказка — в стандартных “тёмных” цветах сервиса */
 #page-report.report-light .pageHead h1,
-#page-report.report-light .hint{ color: rgb(0,0,0); }
-#page-report.report-light .btn{ border-color: rgba(0,0,0,.22); color: rgb(0,0,0); }
-#page-report.report-light .btn.primary{ background: rgb(0,0,0); color: rgb(255,255,255); border-color: rgb(0,0,0); }
+#page-report.report-light .hint{
+  color: inherit !important;
+}
 
 /* Лист отчёта */
 .pageSheet{
