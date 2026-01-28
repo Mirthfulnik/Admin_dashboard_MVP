@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lotus Music · VK Digital-отчёт (MVP)</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">LM</div>
+      <div>
+        <div class="brandTitle">Lotus Music · VK Digital-отчёт</div>
+        <div class="brandSub">MVP · локальное хранение (localStorage)</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="tabBtn active" data-route="releases">Релизы</button>
+      <button class="tabBtn" data-route="editor">Конструктор</button>
+      <button class="tabBtn" data-route="history">История</button>
+      <button class="tabBtn" data-route="report">Отчёт</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- RELEASES -->
+    <section class="page active" id="page-releases">
+      <div class="pageHead">
+        <h1>Релизы</h1>
+        <div class="actions">
+          <button class="btn primary" id="btn-new-release">+ Добавить релиз</button>
+        </div>
+      </div>
+
+      <div class="card" id="new-release-card" hidden>
+        <div class="cardTitle">
+          <h2>Новый релиз</h2>
+          <button class="iconBtn" id="btn-cancel-new-release" title="Закрыть">✕</button>
+        </div>
+        <div class="grid cols2">
+          <div class="field">
+            <label>Артисты (через запятую)</label>
+            <input id="nr-artists" placeholder="EMIN, Amanda Holden" />
+          </div>
+          <div class="field">
+            <label>Трек</label>
+            <input id="nr-track" placeholder="Somethin' Stupid" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="muted">Название релиза будет: <b id="nr-title-preview">—</b></div>
+          <div class="spacer"></div>
+          <button class="btn" id="btn-create-release">Создать</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">
+          <h2>Список релизов</h2>
+          <span class="pill" id="releases-count">0</span>
+        </div>
+        <div id="releases-list" class="list"></div>
+        <div class="hint">Нажми «Открыть», чтобы продолжить загрузки и собрать PDF.</div>
+      </div>
+    </section>
+
+    <!-- EDITOR -->
+    <section class="page" id="page-editor">
+      <div class="pageHead">
+        <h1>Конструктор релиза</h1>
+        <div class="actions">
+          <select id="editor-release-select"></select>
+        </div>
+      </div>
+
+      <div class="cascade">
+
+        <!-- STEP 1: META -->
+        <section class="step card" id="step-meta">
+          <div class="cardTitle">
+            <h2>1) Релиз</h2>
+            <span class="pill" id="pill-release-id">—</span>
+          </div>
+
+          <div class="grid cols2">
+            <div class="field">
+              <label>Артисты</label>
+              <input id="ed-artists" />
+            </div>
+            <div class="field">
+              <label>Трек</label>
+              <input id="ed-track" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <div class="muted">Название: <b id="ed-title">—</b></div>
+            <div class="spacer"></div>
+            <button class="btn" id="btn-save-meta">Сохранить</button>
+          </div>
+        </section>
+
+        <!-- STEP 2: COVER -->
+        <section class="step card" id="step-cover">
+          <div class="cardTitle">
+            <h2>2) Обложка релиза</h2>
+            <span class="pill" id="pill-cover">не загружена</span>
+          </div>
+
+          <div class="row">
+            <input type="file" id="cover-file" accept="image/png,image/jpeg,image/webp" />
+            <button class="btn danger inline" id="btn-delete-cover" title="Удалить обложку" hidden>Удалить</button>
+          </div>
+
+          <div class="previewRow" id="cover-preview-wrap" hidden>
+            <img id="cover-preview" class="coverPreview" alt="Обложка" />
+          </div>
+
+          <div class="hint">После загрузки обложки откроется шаг 3 «Стримы».</div>
+        </section>
+
+        <!-- STEP 3: STREAMS -->
+        <section class="step card locked" id="step-streams">
+          <div class="cardTitle">
+            <h2>3) Стримы (VK) по дням</h2>
+            <span class="pill" id="pill-streams">не загружено</span>
+          </div>
+
+          <div class="row">
+            <button class="btn" id="btn-add-streams" disabled>+ Добавить прослушивания</button>
+            <button class="btn danger inline" id="btn-delete-streams" hidden>Удалить</button>
+          </div>
+
+          <div class="modal" id="streams-modal" hidden>
+            <div class="modalCard">
+              <div class="cardTitle">
+                <h3>Загрузка стримов</h3>
+                <button class="iconBtn" id="btn-close-streams-modal" title="Закрыть">✕</button>
+              </div>
+              <div class="field">
+                <label>Файл .xlsx</label>
+                <input type="file" id="streams-file" accept=".xlsx" />
+              </div>
+              <div class="hint">Ожидаемые колонки: «Дата» и «vk» (лист Chart data или первый лист).</div>
+
+              <div class="miniTableWrap" id="streams-preview-wrap" hidden>
+                <div class="miniTableTitle">Превью (первые 5 строк)</div>
+                <table class="miniTable" id="streams-preview"></table>
+              </div>
+
+              <div class="row" style="margin-top:12px">
+                <div class="spacer"></div>
+                <button class="btn primary" id="btn-save-streams" disabled>Сохранить</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 4: COMMUNITIES -->
+        <section class="step card locked" id="step-communities">
+          <div class="cardTitle">
+            <h2>4) Сообщества релиза (1..N)</h2>
+            <span class="pill" id="pill-communities">0</span>
+          </div>
+
+          <div class="row">
+            <button class="btn" id="btn-add-community" disabled>+ Добавить сообщество</button>
+          </div>
+
+          <div class="modal" id="community-modal" hidden>
+            <div class="modalCard">
+              <div class="cardTitle">
+                <h3>Новое сообщество</h3>
+                <button class="iconBtn" id="btn-close-community-modal" title="Закрыть">✕</button>
+              </div>
+              <div class="grid cols2">
+                <div class="field">
+                  <label>Название сообщества</label>
+                  <input id="cm-name" placeholder="VK: Artist Official" />
+                </div>
+                <div class="field">
+                  <label>ID сообщества</label>
+                  <input id="cm-vkId" placeholder="123456789" />
+                </div>
+              </div>
+              <div class="row" style="margin-top:12px">
+                <div class="spacer"></div>
+                <button class="btn primary" id="btn-save-community">Сохранить</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="communities-list" class="stack"></div>
+          <div class="hint">Для каждого сообщества нужно загрузить “Объявления” + “Демография” + креативы.</div>
+        </section>
+
+        <!-- STEP 5: BUILD -->
+        <section class="step card locked" id="step-build">
+          <div class="cardTitle">
+            <h2>5) Сформировать отчёт</h2>
+            <span class="pill" id="pill-ready">не готов</span>
+          </div>
+
+          <div class="row">
+            <button class="btn primary" id="btn-build-report" disabled>Создать отчёт</button>
+            <button class="btn" id="btn-open-report" disabled>Открыть отчёт</button>
+            <div class="spacer"></div>
+            <button class="btn danger inline" id="btn-delete-release">Удалить релиз…</button>
+          </div>
+
+          <div class="hint">PDF создаётся через “Печать” в браузере (A4 landscape). В будущем можно заменить серверной генерацией.</div>
+        </section>
+
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="page" id="page-history">
+      <div class="pageHead">
+        <h1>История</h1>
+      </div>
+
+      <div class="card">
+        <div class="cardTitle">
+          <h2>Релизы и данные</h2>
+          <span class="pill" id="history-count">0</span>
+        </div>
+        <div id="history-list" class="list"></div>
+        <div class="hint">Удаление требует подтверждения названием релиза (exact match).</div>
+      </div>
+
+      <div class="modal" id="delete-modal" hidden>
+        <div class="modalCard">
+          <div class="cardTitle">
+            <h3>Удаление релиза</h3>
+            <button class="iconBtn" id="btn-close-delete-modal" title="Закрыть">✕</button>
+          </div>
+          <div class="muted" style="margin-bottom:10px">
+            Чтобы удалить релиз, введи название релиза полностью:
+            <div style="margin-top:6px"><b id="delete-title">—</b></div>
+          </div>
+          <div class="field">
+            <label>Подтверждение</label>
+            <input id="delete-confirm" placeholder="Введи название релиза" />
+          </div>
+          <div class="row" style="margin-top:12px">
+            <div class="spacer"></div>
+            <button class="btn danger" id="btn-confirm-delete" disabled>Удалить навсегда</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REPORT -->
+    <section class="page" id="page-report">
+      <div class="pageHead">
+        <h1>Отчёт</h1>
+        <div class="actions">
+          <select id="report-release-select"></select>
+          <button class="btn" id="btn-print" title="Откроет системную печать">Печать / PDF</button>
+        </div>
+      </div>
+
+      <div class="hint">
+        Настрой печать: <b>Layout: Landscape</b>, Paper: <b>A4</b>, Margins: <b>None/Minimum</b>.
+      </div>
+
+      <div id="report-root"></div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    MVP: география не реализована · Детализация = список объявлений · Стримы = колонка <b>vk</b> · Blocked не фильтруем
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
