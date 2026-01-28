@@ -1099,6 +1099,25 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
   /** -----------------------------
    *  Parsers (xlsx)
    * -----------------------------*/
+// --- Helpers: normalize column names (trim, NBSP) ---
+function normKey_(s){
+  return String(s ?? "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function normalizeRowKeys_(row){
+  const out = {};
+  for (const k in row){
+    out[normKey_(k)] = row[k];
+  }
+  return out;
+}
+async function readXlsx_(file){
+  const buf = await file.arrayBuffer();
+  return XLSX.read(buf, {type:"array"});
+}
+
   async function parseStreamsXlsx_(file){
     const wb = await readXlsx_(file);
     // Prefer sheet "Chart data" but fallback to first
@@ -1144,25 +1163,21 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
 
   // Пропускаем первые 5 строк (служебные), 6-я строка становится заголовками
   const jsonRaw = XLSX.utils.sheet_to_json(ws, { defval:"", range: 5 });
-const json = jsonRaw.map(normalizeRowKeys_);
+  const json = jsonRaw.map(normalizeRowKeys_);
 
-if (!json.length) throw new Error("empty demo");
+  if (!json.length) throw new Error("empty demo");
 
-// Keep only rows having Age+Gender
-const out = [];
-for (const row of json){
-  const age = row["Возраст"] ?? row["Age"] ?? "";
-  const gender = row["Пол"] ?? row["Gender"] ?? "";
-  if (!age || !gender) continue;
-  out.push(row);
-}
-if (!out.length) return json; // fallback
-return out;
-
-  async function readXlsx_(file){
-    const buf = await file.arrayBuffer();
-    return XLSX.read(buf, {type:"array"});
+  // Keep only rows having Age+Gender
+  const out = [];
+  for (const row of json){
+    const age = row["Возраст"] ?? row["Age"] ?? "";
+    const gender = row["Пол"] ?? row["Gender"] ?? "";
+    if (!age || !gender) continue;
+    out.push(row);
   }
+  return out.length ? out : json; // fallback
+}
+
 
   /** -----------------------------
    *  Demo aggregation (MVP)
