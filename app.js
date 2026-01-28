@@ -1025,37 +1025,80 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     const demo = (c.demoRows||[]);
     const agg = aggregateDemo_(demo);
 
-    // Charts as simple SVG bars (stable in print)
-    // Пол: показы vs клики
-    const genderCats = ["Мужчины","Женщины","Пол не указан","Итого:"];
-    const genderImpr = {...agg.genderImpr};
-    const genderClicks = {...agg.genderClicks};
-    genderImpr["Итого:"] = sumObj_(agg.genderImpr);
-    genderClicks["Итого:"] = sumObj_(agg.genderClicks);
+     function vkLegendTable_(rows){
+  // rows: [{label, color, pct, value}]
+  return `
+  <div class="vkLegend">
+    ${rows.map(it=>`
+      <div class="vkLegendRow">
+        <span class="vkDot" style="background:${it.color}"></span>
+        <span class="vkLab">${escapeHtml_(it.label)}</span>
+        <span class="vkPct">${escapeHtml_(it.pct)}</span>
+        <span class="vkVal">${escapeHtml_(it.value)}</span>
+      </div>
+    `).join("")}
+  </div>`;
+}
 
-    inner.appendChild(svgGroupedBarChart_("Распределение по полу", genderCats, [
-        {name:"Показы", data: genderImpr},
-        {name:"Клики", data: genderClicks}
-    ], { overlayPairs:true, pairSize:2, showValues:true }));
+    // Charts as simple SVG bars (stable in print)
+    // Пол: показы/клики (оверлей) + таблица справа как в ВК
+const genderCats = ["Мужчины","Женщины","Пол не указан"];
+const genderImpr = {...agg.genderImpr};
+const genderClicks = {...agg.genderClicks};
+
+const totalImpr = sumObj_(agg.genderImpr);
+const totalClicks = sumObj_(agg.genderClicks);
+
+// делаем “вк-таблицу” по выбранной метрике.
+// В ВК в UI можно переключать Показы/Клики. В отчёте покажем обе строки (Показы/Клики) через оверлей,
+// а таблицу сделаем по “Показы” (как на скрине с “Показы”), и ниже можем добавить “Итого: …”
+const legendRows = genderCats.map((g, idx)=>({
+  label: g,
+  color: idx===0 ? "rgba(46,118,255,.95)" : idx===1 ? "rgba(226,60,166,.95)" : "rgba(200,206,214,.95)",
+  pct: pct_(genderImpr[g]||0, totalImpr),
+  value: formatInt_(genderImpr[g]||0),
+}));
+
+// контейнер “как в ВК”: слева график, справа таблица
+const vkRow1 = document.createElement("div");
+vkRow1.className = "vkRow";
+
+const chart1 = svgGroupedBarChart_("Распределение по полу", genderCats, [
+  {name:"Показы", data: genderImpr},
+  {name:"Клики", data: genderClicks}
+], { overlayPairs:true, pairSize:2, showValues:false }); // значения ВК показывает в таблице, не над столбиком
+
+vkRow1.appendChild(chart1);
+
+const side1 = document.createElement("div");
+side1.className = "vkSide";
+side1.innerHTML = `
+  ${vkLegendTable_(legendRows)}
+  <div class="vkTotalRow">
+    <span class="vkTotalLab">Итого</span>
+    <span class="vkTotalVal">${formatInt_(totalImpr)}</span>
+  </div>
+`;
+vkRow1.appendChild(side1);
+inner.appendChild(vkRow1);
 
 
     // Возраст: показы/клики по полу
-    const ageOrder = ["до 17","18-24","25-34","35-44","45-54","55-64","65+"];
-    const mk = (g, field)=>{
-      const out = {};
-      for (const a of ageOrder){
-        out[a] = ((agg.ageGender[a] && agg.ageGender[a][g]) ? agg.ageGender[a][g][field] : 0);
-      }
-      return out;
-    };
-    inner.appendChild(svgGroupedBarChart_("Распределение по возрасту", ageOrder, [
-     {name:"Мужчины · Показы", data: mk("Мужчины","impr")},
-     {name:"Мужчины · Клики", data: mk("Мужчины","clicks")},
-     {name:"Женщины · Показы", data: mk("Женщины","impr")},
-     {name:"Женщины · Клики", data: mk("Женщины","clicks")}
-    ], { overlayPairs:true, pairSize:2, showValues:true }));
+    const ageOrder = ["13-17","18-24","25-34","35-44","45-54","55-64","65+"]; // если в данных “до 17”, оставь “до 17”
+const mk = (g, field)=>{
+  const out = {};
+  for (const a of ageOrder){
+    out[a] = ((agg.ageGender[a] && agg.ageGender[a][g]) ? agg.ageGender[a][g][field] : 0);
+  }
+  return out;
+};
 
-
+inner.appendChild(svgGroupedBarChart_("Распределение по возрасту", ageOrder, [
+  {name:"Мужчины · Показы", data: mk("Мужчины","impr")},
+  {name:"Мужчины · Клики", data: mk("Мужчины","clicks")},
+  {name:"Женщины · Показы", data: mk("Женщины","impr")},
+  {name:"Женщины · Клики", data: mk("Женщины","clicks")}
+], { overlayPairs:true, pairSize:2, showValues:false }));
 
     // Detail block
     const totalImpr = sumObj_(agg.genderImpr);
