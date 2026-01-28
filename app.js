@@ -585,7 +585,13 @@
     const dTbl = card.querySelector('[data-prev="demo"]');
     if (Array.isArray(c.demoRows) && c.demoRows.length){
       dWrap.hidden = false;
-      renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","Показы","Клики","Цена за результат, ₽"]);
+      const demoCostKey =
+  (c.demoRows?.[0] && ("Цена за результат, ₽" in c.demoRows[0])) ? "Цена за результат, ₽"
+  : (c.demoRows?.[0] && ("Цена за результат, Р" in c.demoRows[0])) ? "Цена за результат, Р"
+  : "Цена за результат, ₽";
+
+renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","Показы","Клики", demoCostKey]);
+
     } else {
       dWrap.hidden = true;
     }
@@ -1133,22 +1139,25 @@
   }
 
   async function parseDemoXlsx_(file){
-    const wb = await readXlsx_(file);
-    // first sheet usually
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, {defval:""});
-    if (!json.length) throw new Error("empty demo");
-    // Keep only rows having Age+Gender
-    const out = [];
-    for (const row of json){
-      const age = row["Возраст"] ?? row["Age"] ?? "";
-      const gender = row["Пол"] ?? row["Gender"] ?? "";
-      if (!age || !gender) continue;
-      out.push(row);
-    }
-    if (!out.length) return json; // fallback
-    return out;
+  const wb = await readXlsx_(file);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+
+  // Пропускаем первые 5 строк (служебные), 6-я строка становится заголовками
+  const json = XLSX.utils.sheet_to_json(ws, { defval:"", range: 5 });
+
+  if (!json.length) throw new Error("empty demo");
+
+  // Keep only rows having Age+Gender
+  const out = [];
+  for (const row of json){
+    const age = row["Возраст"] ?? row["Age"] ?? "";
+    const gender = row["Пол"] ?? row["Gender"] ?? "";
+    if (!age || !gender) continue;
+    out.push(row);
   }
+  if (!out.length) return json; // fallback
+  return out;
+}
 
   async function readXlsx_(file){
     const buf = await file.arrayBuffer();
@@ -1181,7 +1190,7 @@
       const a = normalizeAge_(row["Возраст"]);
       const impr = num_(row["Показы"]);
       const clicks = num_(row["Клики"]);
-      const cost = numOrNull_(row["Цена за результат, ₽"]);
+      const cost = numOrNull_(row["Цена за результат, ₽"] ?? row["Цена за результат, Р"] ?? row["Цена за результат"] ?? "");
       genderImpr[g] = (genderImpr[g]||0) + impr;
       genderClicks[g] = (genderClicks[g]||0) + clicks;
       ageImpr[a] = (ageImpr[a]||0) + impr;
