@@ -1034,9 +1034,10 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     genderClicks["Итого:"] = sumObj_(agg.genderClicks);
 
     inner.appendChild(svgGroupedBarChart_("Распределение по полу", genderCats, [
-      {name:"Показы", data: genderImpr},
-      {name:"Клики", data: genderClicks}
-    ]));
+        {name:"Показы", data: genderImpr},
+        {name:"Клики", data: genderClicks}
+    ], { overlayPairs:true, pairSize:2, showValues:true }));
+
 
     // Возраст: показы/клики по полу
     const ageOrder = ["до 17","18-24","25-34","35-44","45-54","55-64","65+"];
@@ -1048,11 +1049,12 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
       return out;
     };
     inner.appendChild(svgGroupedBarChart_("Распределение по возрасту", ageOrder, [
-      {name:"Мужчины · Показы", data: mk("Мужчины","impr")},
-      {name:"Мужчины · Клики", data: mk("Мужчины","clicks")},
-      {name:"Женщины · Показы", data: mk("Женщины","impr")},
-      {name:"Женщины · Клики", data: mk("Женщины","clicks")}
-    ]));
+     {name:"Мужчины · Показы", data: mk("Мужчины","impr")},
+     {name:"Мужчины · Клики", data: mk("Мужчины","clicks")},
+     {name:"Женщины · Показы", data: mk("Женщины","impr")},
+     {name:"Женщины · Клики", data: mk("Женщины","clicks")}
+    ], { overlayPairs:true, pairSize:2, showValues:true }));
+
 
 
     // Detail block
@@ -1361,83 +1363,179 @@ async function readXlsx_(file){
   }
 
 
-  function svgGroupedBarChart_(title, categories, series, opts={}){
-    const w = 1000, h = 200, pad = 30;
-    const svgBox = document.createElement("div");
-    svgBox.className = "chartBox";
+  function svgGroupedBarChart_(title, categories, series, opts = {}) {
+  const w = 1000, h = 220, pad = 30;
+  const svgBox = document.createElement("div");
+  svgBox.className = "chartBox";
 
-    const legend = series.map((s, i)=>`<span style="display:inline-flex; align-items:center; gap:6px; margin-right:14px">
-      <span style="width:10px; height:10px; border-radius:3px; background:rgba(122,101,255,${0.25 + i*0.18}); display:inline-block"></span>
+  const legend = series.map((s, i) => `
+    <span style="display:inline-flex; align-items:center; gap:6px; margin-right:14px">
+      <span style="width:10px; height:10px; border-radius:3px; background:rgba(122,101,255,${0.25 + i * 0.18}); display:inline-block"></span>
       <span>${escapeHtml_(s.name)}</span>
-    </span>`).join("");
+    </span>
+  `).join("");
 
-    svgBox.innerHTML = `
-      <div class="chartTitle" style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px">
-        <span>${escapeHtml_(title)}</span>
-        <span style="font-size:12px; opacity:.75; white-space:nowrap">${legend}</span>
-      </div>
-    `;
+  svgBox.innerHTML = `
+    <div class="chartTitle" style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px">
+      <span>${escapeHtml_(title)}</span>
+      <span style="font-size:12px; opacity:.75; white-space:nowrap">${legend}</span>
+    </div>
+  `;
 
-    const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    svgEl.classList.add("svgChart");
+  const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svgEl.classList.add("svgChart");
 
-    const values = [];
-    for (const cat of categories){
-      for (const s of series){
-        values.push(Number((s.data && s.data[cat]) || 0));
+  const showValues = (opts.showValues !== false);
+  const overlayPairs = !!opts.overlayPairs;     // true => внутри пары рисуем “накладку”
+  const pairSize = overlayPairs ? (opts.pairSize || 2) : 1; // 2: [Показы, Клики] или [Impr, Clicks]
+  const pairCount = overlayPairs ? Math.ceil(series.length / pairSize) : series.length;
+
+  // max по всем значениям
+  const values = [];
+  for (const cat of categories) {
+    for (const s of series) values.push(Number((s.data && s.data[cat]) || 0));
+  }
+  const max = Math.max(1, ...values);
+
+  const baseY = h - pad;
+
+  // baseline
+  const base = document.createElementNS(svgEl.namespaceURI, "line");
+  base.setAttribute("x1", pad);
+  base.setAttribute("x2", w - pad);
+  base.setAttribute("y1", baseY);
+  base.setAttribute("y2", baseY);
+  base.setAttribute("stroke", "rgba(0,0,0,.18)");
+  base.setAttribute("stroke-width", "2");
+  svgEl.appendChild(base);
+
+  // размеры групп
+  const groupW = (w - pad * 2) / Math.max(1, categories.length);
+  const pairGap = 10;
+  const pairW = (groupW - pairGap * (pairCount - 1)) / Math.max(1, pairCount);
+
+  const overlayWidthRatio = opts.overlayWidthRatio || 0.60; // ширина кликов относительно показов
+  const colors = (i, isOverlay) => {
+    // один hue, разная плотность
+    const alpha = isOverlay ? (0.78 - i * 0.06) : (0.38 - i * 0.04);
+    return `rgba(122,101,255,${Math.max(0.18, alpha)})`;
+  };
+
+  categories.forEach((cat, ci) => {
+    const gx = pad + ci * groupW;
+
+    for (let p = 0; p < pairCount; p++) {
+      const px = gx + p * (pairW + pairGap);
+
+      if (!overlayPairs) {
+        // обычные “рядом”
+        const s = series[p];
+        const v = Number((s.data && s.data[cat]) || 0);
+        const bh = (h - pad * 2) * (v / max);
+        const y = baseY - bh;
+
+        const rect = document.createElementNS(svgEl.namespaceURI, "rect");
+        rect.setAttribute("x", px);
+        rect.setAttribute("y", y);
+        rect.setAttribute("width", pairW);
+        rect.setAttribute("height", bh);
+        rect.setAttribute("rx", "10");
+        rect.setAttribute("fill", colors(p, false));
+        svgEl.appendChild(rect);
+
+        if (showValues && v > 0) {
+          const val = document.createElementNS(svgEl.namespaceURI, "text");
+          val.setAttribute("x", px + pairW / 2);
+          val.setAttribute("y", y - 8);
+          val.setAttribute("text-anchor", "middle");
+          val.setAttribute("font-size", "12");
+          val.setAttribute("font-weight", "900");
+          val.setAttribute("fill", "rgba(0,0,0,.75)");
+          val.textContent = Math.round(v).toLocaleString("ru-RU");
+          svgEl.appendChild(val);
+        }
+
+        continue;
+      }
+
+      // overlayPairs: внутри пары [0]=Показы (широкий), [1]=Клики (узкий)
+      const s0 = series[p * pairSize + 0];
+      const s1 = series[p * pairSize + 1];
+
+      const v0 = Number((s0 && s0.data && s0.data[cat]) || 0);
+      const v1 = Number((s1 && s1.data && s1.data[cat]) || 0);
+
+      // базовый широкий
+      const bh0 = (h - pad * 2) * (v0 / max);
+      const y0 = baseY - bh0;
+
+      const rect0 = document.createElementNS(svgEl.namespaceURI, "rect");
+      rect0.setAttribute("x", px);
+      rect0.setAttribute("y", y0);
+      rect0.setAttribute("width", pairW);
+      rect0.setAttribute("height", bh0);
+      rect0.setAttribute("rx", "10");
+      rect0.setAttribute("fill", colors(p, false));
+      svgEl.appendChild(rect0);
+
+      // накладка узким
+      const ow = pairW * overlayWidthRatio;
+      const ox = px + (pairW - ow) / 2;
+
+      const bh1 = (h - pad * 2) * (v1 / max);
+      const y1 = baseY - bh1;
+
+      const rect1 = document.createElementNS(svgEl.namespaceURI, "rect");
+      rect1.setAttribute("x", ox);
+      rect1.setAttribute("y", y1);
+      rect1.setAttribute("width", ow);
+      rect1.setAttribute("height", bh1);
+      rect1.setAttribute("rx", "10");
+      rect1.setAttribute("fill", colors(p, true));
+      svgEl.appendChild(rect1);
+
+      // числа (черные, чтобы печать/белый фон)
+      if (showValues && (v0 > 0 || v1 > 0)) {
+        if (v0 > 0) {
+          const t0 = document.createElementNS(svgEl.namespaceURI, "text");
+          t0.setAttribute("x", px + pairW / 2);
+          t0.setAttribute("y", y0 - 8);
+          t0.setAttribute("text-anchor", "middle");
+          t0.setAttribute("font-size", "12");
+          t0.setAttribute("font-weight", "900");
+          t0.setAttribute("fill", "rgba(0,0,0,.75)");
+          t0.textContent = Math.round(v0).toLocaleString("ru-RU");
+          svgEl.appendChild(t0);
+        }
+        if (v1 > 0) {
+          const t1 = document.createElementNS(svgEl.namespaceURI, "text");
+          t1.setAttribute("x", px + pairW / 2);
+          t1.setAttribute("y", y1 - 22); // чуть выше, чтобы не наезжало
+          t1.setAttribute("text-anchor", "middle");
+          t1.setAttribute("font-size", "11");
+          t1.setAttribute("font-weight", "900");
+          t1.setAttribute("fill", "rgba(0,0,0,.65)");
+          t1.textContent = Math.round(v1).toLocaleString("ru-RU");
+          svgEl.appendChild(t1);
+        }
       }
     }
-    const max = Math.max(1, ...values);
 
-    const groupW = (w - pad*2) / Math.max(1, categories.length);
-    const barGap = 6;
-    const barW = (groupW - barGap*(series.length-1)) / Math.max(1, series.length);
+    // подпись категории (ось X)
+    const label = document.createElementNS(svgEl.namespaceURI, "text");
+    label.setAttribute("x", gx + groupW / 2);
+    label.setAttribute("y", baseY + 18);
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("font-size", "12");
+    label.setAttribute("fill", "rgba(0,0,0,.75)");
+    label.textContent = cat;
+    svgEl.appendChild(label);
+  });
 
-    // baseline
-    const base = document.createElementNS("http://www.w3.org/2000/svg","line");
-    base.setAttribute("x1", pad);
-    base.setAttribute("x2", w-pad);
-    base.setAttribute("y1", h-pad);
-    base.setAttribute("y2", h-pad);
-    base.setAttribute("stroke", "rgba(0,0,0,.18)");
-    base.setAttribute("stroke-width", "2");
-    svgEl.appendChild(base);
-
-    categories.forEach((cat, ci)=>{
-      const gx = pad + ci*groupW;
-
-      series.forEach((s, si)=>{
-        const v = Number((s.data && s.data[cat]) || 0);
-        const bh = (v/max) * (h - pad*2);
-        const x = gx + si*(barW+barGap);
-        const y = (h-pad) - bh;
-
-        const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-        r.setAttribute("x", x);
-        r.setAttribute("y", y);
-        r.setAttribute("width", barW);
-        r.setAttribute("height", bh);
-        r.setAttribute("rx", "10");
-        r.setAttribute("fill", `rgba(122,101,255,${0.25 + si*0.18})`);
-        svgEl.appendChild(r);
-      });
-
-      // label
-      const tx = document.createElementNS("http://www.w3.org/2000/svg","text");
-      tx.setAttribute("x", gx + groupW/2);
-      tx.setAttribute("y", h - 10);
-      tx.setAttribute("text-anchor", "middle");
-      tx.setAttribute("font-size", "12");
-      tx.setAttribute("fill", "rgba(0,0,0,.70)");
-      tx.textContent = cat;
-      svgEl.appendChild(tx);
-    });
-
-    svgBox.appendChild(svgEl);
-    return svgBox;
-  }
-
+  svgBox.appendChild(svgEl);
+  return svgBox;
+}
 
   function svgLineChart_(title, points){
     const w = 1000, h = 220, pad = 30;
