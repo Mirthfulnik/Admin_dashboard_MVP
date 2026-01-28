@@ -862,7 +862,7 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
       const inner = el.firstElementChild;
       const head = document.createElement("div");
       head.className = "sheetHeader";
-      head.innerHTML = `<div class="lotusMark">LOTUS MUSIC</div><div class="lotusMark">LOTUS MUSIC</div>`;
+      head.innerHTML = `<img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/><img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/>`;
       inner.appendChild(head);
     }
     return el;
@@ -1067,7 +1067,20 @@ vkRow1.className = "vkRow";
 const chart1 = svgGroupedBarChart_("Распределение по полу", genderCats, [
   {name:"Показы", data: genderImpr},
   {name:"Клики", data: genderClicks}
-], { overlayPairs:true, pairSize:2, showValues:false }); // значения ВК показывает в таблице, не над столбиком
+], { 
+  overlayPairs:true, 
+  pairSize:2, 
+  showValues:false,
+  barWidthRatio:0.42,
+  overlayWidthRatio:0.62,
+  categoryColors:{
+    "Мужчины":"rgb(46,118,255)",
+    "Женщины":"rgb(226,60,166)",
+    "Пол не указан":"rgb(200,206,214)",
+    "Итого:":"rgb(200,206,214)"
+  },
+  seriesColors:["rgb(46,118,255)","rgb(46,118,255)"] 
+}); // значения ВК показывает в таблице, не над столбиком
 
 vkRow1.appendChild(chart1);
 
@@ -1099,7 +1112,17 @@ inner.appendChild(svgGroupedBarChart_("Распределение по возр�
   {name:"Мужчины · Клики", data: mk("Мужчины","clicks")},
   {name:"Женщины · Показы", data: mk("Женщины","impr")},
   {name:"Женщины · Клики", data: mk("Женщины","clicks")}
-], { overlayPairs:true, pairSize:2, showValues:false }));
+], { 
+  overlayPairs:true, 
+  pairSize:2, 
+  showValues:false,
+  barWidthRatio:0.40,
+  overlayWidthRatio:0.60,
+  seriesColors:[
+    "rgba(46,118,255,0.55)","rgb(46,118,255)",
+    "rgba(226,60,166,0.55)","rgb(226,60,166)"
+  ]
+}));
 
     // Detail block
     const maleImpr = genderImpr["Мужчины"] || 0;
@@ -1410,12 +1433,15 @@ async function readXlsx_(file){
   const svgBox = document.createElement("div");
   svgBox.className = "chartBox";
 
-  const legend = series.map((s, i) => `
-    <span style="display:inline-flex; align-items:center; gap:6px; margin-right:14px">
-      <span style="width:10px; height:10px; border-radius:3px; background:rgba(122,101,255,${0.25 + i * 0.18}); display:inline-block"></span>
-      <span>${escapeHtml_(s.name)}</span>
-    </span>
-  `).join("");
+  const legend = series.map((s, i) => {
+    const col = (opts.seriesColors && opts.seriesColors[i]) ? opts.seriesColors[i] : `rgba(122,101,255,${0.25 + i * 0.18})`;
+    return `
+      <span style="display:inline-flex; align-items:center; gap:6px; margin-right:14px">
+        <span style="width:10px; height:10px; border-radius:3px; background:${col}; display:inline-block"></span>
+        <span>${escapeHtml_(s.name)}</span>
+      </span>
+    `;
+  }).join("");
 
   svgBox.innerHTML = `
     <div class="chartTitle" style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px">
@@ -1429,11 +1455,11 @@ async function readXlsx_(file){
   svgEl.classList.add("svgChart");
 
   const showValues = (opts.showValues !== false);
-  const overlayPairs = !!opts.overlayPairs;     // true => внутри пары рисуем “накладку”
-  const pairSize = overlayPairs ? (opts.pairSize || 2) : 1; // 2: [Показы, Клики] или [Impr, Clicks]
+  const overlayPairs = !!opts.overlayPairs;
+  const pairSize = overlayPairs ? (opts.pairSize || 2) : 1;
   const pairCount = overlayPairs ? Math.ceil(series.length / pairSize) : series.length;
 
-  // max по всем значениям
+  // max
   const values = [];
   for (const cat of categories) {
     for (const s of series) values.push(Number((s.data && s.data[cat]) || 0));
@@ -1452,127 +1478,143 @@ async function readXlsx_(file){
   base.setAttribute("stroke-width", "2");
   svgEl.appendChild(base);
 
-  // размеры групп
+  // sizes
   const groupW = (w - pad * 2) / Math.max(1, categories.length);
-  const pairGap = 10;
+  const pairGap = opts.pairGap ?? 14;                // больше воздуха => “уже” визуально
   const pairW = (groupW - pairGap * (pairCount - 1)) / Math.max(1, pairCount);
+  const barWidthRatio = opts.barWidthRatio ?? 0.62;  // столбцы уже
+  const overlayWidthRatio = opts.overlayWidthRatio ?? 0.55;
 
-  const overlayWidthRatio = opts.overlayWidthRatio || 0.60; // ширина кликов относительно показов
-  const colors = (i, isOverlay) => {
-    // один hue, разная плотность
-    const alpha = isOverlay ? (0.78 - i * 0.06) : (0.38 - i * 0.04);
+  const rx = opts.rx ?? 10;
+
+  const toRGBA_ = (col, a)=>{
+    if (!col) return `rgba(0,0,0,${a})`;
+    if (col.startsWith("rgba(")) {
+      // rgba(r,g,b,alpha)
+      return col.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^\)]+\)/, (m,r,g,b)=>`rgba(${r.trim()},${g.trim()},${b.trim()},${a})`);
+    }
+    if (col.startsWith("rgb(")) {
+      return col.replace(/rgb\(([^\)]+)\)/, (m,inside)=>`rgba(${inside},${a})`);
+    }
+    if (col[0]==="#" && col.length===7){
+      const r=parseInt(col.slice(1,3),16), g=parseInt(col.slice(3,5),16), b=parseInt(col.slice(5,7),16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+    return col; // fallback
+  };
+
+  const colorFor_ = (si, cat, isOverlay)=>{
+    // 1) категорные цвета (для графика по полу, где цвет = пол)
+    if (opts.categoryColors && opts.categoryColors[cat]){
+      const base = opts.categoryColors[cat];
+      return toRGBA_(base, isOverlay ? 0.55 : 0.90);
+    }
+    // 2) цвета по сериям (для графика по возрасту: М/Ж + показы/клики)
+    if (opts.seriesColors && opts.seriesColors[si]){
+      const base = opts.seriesColors[si];
+      // если это уже rgba/rgb/hex — пусть будет, но при overlay чуть “темнее”
+      return isOverlay ? toRGBA_(base, 0.78) : base;
+    }
+    // 3) дефолт
+    const alpha = isOverlay ? (0.78 - si * 0.06) : (0.38 - si * 0.04);
     return `rgba(122,101,255,${Math.max(0.18, alpha)})`;
   };
 
   categories.forEach((cat, ci) => {
     const gx = pad + ci * groupW;
 
-    for (let p = 0; p < pairCount; p++) {
-      const px = gx + p * (pairW + pairGap);
-
-      if (!overlayPairs) {
-        // обычные “рядом”
-        const s = series[p];
-        const v = Number((s.data && s.data[cat]) || 0);
-        const bh = (h - pad * 2) * (v / max);
-        const y = baseY - bh;
-
-        const rect = document.createElementNS(svgEl.namespaceURI, "rect");
-        rect.setAttribute("x", px);
-        rect.setAttribute("y", y);
-        rect.setAttribute("width", pairW);
-        rect.setAttribute("height", bh);
-        rect.setAttribute("rx", "10");
-        rect.setAttribute("fill", colors(p, false));
-        svgEl.appendChild(rect);
-
-        if (showValues && v > 0) {
-          const val = document.createElementNS(svgEl.namespaceURI, "text");
-          val.setAttribute("x", px + pairW / 2);
-          val.setAttribute("y", y - 8);
-          val.setAttribute("text-anchor", "middle");
-          val.setAttribute("font-size", "12");
-          val.setAttribute("font-weight", "900");
-          val.setAttribute("fill", "rgba(0,0,0,.75)");
-          val.textContent = Math.round(v).toLocaleString("ru-RU");
-          svgEl.appendChild(val);
-        }
-
-        continue;
-      }
-
-      // overlayPairs: внутри пары [0]=Показы (широкий), [1]=Клики (узкий)
-      const s0 = series[p * pairSize + 0];
-      const s1 = series[p * pairSize + 1];
-
-      const v0 = Number((s0 && s0.data && s0.data[cat]) || 0);
-      const v1 = Number((s1 && s1.data && s1.data[cat]) || 0);
-
-      // базовый широкий
-      const bh0 = (h - pad * 2) * (v0 / max);
-      const y0 = baseY - bh0;
-
-      const rect0 = document.createElementNS(svgEl.namespaceURI, "rect");
-      rect0.setAttribute("x", px);
-      rect0.setAttribute("y", y0);
-      rect0.setAttribute("width", pairW);
-      rect0.setAttribute("height", bh0);
-      rect0.setAttribute("rx", "10");
-      rect0.setAttribute("fill", colors(p, false));
-      svgEl.appendChild(rect0);
-
-      // накладка узким
-      const ow = pairW * overlayWidthRatio;
-      const ox = px + (pairW - ow) / 2;
-
-      const bh1 = (h - pad * 2) * (v1 / max);
-      const y1 = baseY - bh1;
-
-      const rect1 = document.createElementNS(svgEl.namespaceURI, "rect");
-      rect1.setAttribute("x", ox);
-      rect1.setAttribute("y", y1);
-      rect1.setAttribute("width", ow);
-      rect1.setAttribute("height", bh1);
-      rect1.setAttribute("rx", "10");
-      rect1.setAttribute("fill", colors(p, true));
-      svgEl.appendChild(rect1);
-
-      // числа (черные, чтобы печать/белый фон)
-      if (showValues && (v0 > 0 || v1 > 0)) {
-        if (v0 > 0) {
-          const t0 = document.createElementNS(svgEl.namespaceURI, "text");
-          t0.setAttribute("x", px + pairW / 2);
-          t0.setAttribute("y", y0 - 8);
-          t0.setAttribute("text-anchor", "middle");
-          t0.setAttribute("font-size", "12");
-          t0.setAttribute("font-weight", "900");
-          t0.setAttribute("fill", "rgba(0,0,0,.75)");
-          t0.textContent = Math.round(v0).toLocaleString("ru-RU");
-          svgEl.appendChild(t0);
-        }
-        if (v1 > 0) {
-          const t1 = document.createElementNS(svgEl.namespaceURI, "text");
-          t1.setAttribute("x", px + pairW / 2);
-          t1.setAttribute("y", y1 - 22); // чуть выше, чтобы не наезжало
-          t1.setAttribute("text-anchor", "middle");
-          t1.setAttribute("font-size", "11");
-          t1.setAttribute("font-weight", "900");
-          t1.setAttribute("fill", "rgba(0,0,0,.65)");
-          t1.textContent = Math.round(v1).toLocaleString("ru-RU");
-          svgEl.appendChild(t1);
-        }
-      }
-    }
-
-    // подпись категории (ось X)
+    // x label
     const label = document.createElementNS(svgEl.namespaceURI, "text");
     label.setAttribute("x", gx + groupW / 2);
-    label.setAttribute("y", baseY + 18);
+    label.setAttribute("y", h - 8);
     label.setAttribute("text-anchor", "middle");
     label.setAttribute("font-size", "12");
     label.setAttribute("fill", "rgba(0,0,0,.75)");
     label.textContent = cat;
     svgEl.appendChild(label);
+
+    for (let p = 0; p < pairCount; p++) {
+      const pxSlot = gx + p * (pairW + pairGap);
+      const slotCenter = pxSlot + pairW/2;
+
+      if (overlayPairs) {
+        // пара: series[p*pairSize + 0] = “основание” (показы), series[+1] = overlay (клики)
+        const baseSeries = series[p * pairSize + 0];
+        const overSeries = series[p * pairSize + 1];
+
+        const v1 = Number((baseSeries?.data && baseSeries.data[cat]) || 0);
+        const v2 = Number((overSeries?.data && overSeries.data[cat]) || 0);
+
+        const bh1 = (h - pad * 2) * (v1 / max);
+        const bh2 = (h - pad * 2) * (v2 / max);
+
+        const mainW = pairW * barWidthRatio;
+        const overW = mainW * overlayWidthRatio;
+
+        const x1 = slotCenter - mainW/2;
+        const x2 = slotCenter - overW/2;
+
+        const y1 = baseY - bh1;
+        const y2 = baseY - bh2;
+
+        const rect1 = document.createElementNS(svgEl.namespaceURI, "rect");
+        rect1.setAttribute("x", x1);
+        rect1.setAttribute("y", y1);
+        rect1.setAttribute("width", mainW);
+        rect1.setAttribute("height", bh1);
+        rect1.setAttribute("rx", String(rx));
+        rect1.setAttribute("fill", colorFor_(p*pairSize+0, cat, false));
+        svgEl.appendChild(rect1);
+
+        const rect2 = document.createElementNS(svgEl.namespaceURI, "rect");
+        rect2.setAttribute("x", x2);
+        rect2.setAttribute("y", y2);
+        rect2.setAttribute("width", overW);
+        rect2.setAttribute("height", bh2);
+        rect2.setAttribute("rx", String(rx));
+        rect2.setAttribute("fill", colorFor_(p*pairSize+1, cat, true));
+        svgEl.appendChild(rect2);
+
+        if (showValues && v1 > 0) {
+          const val = document.createElementNS(svgEl.namespaceURI, "text");
+          val.setAttribute("x", slotCenter);
+          val.setAttribute("y", y1 - 8);
+          val.setAttribute("text-anchor", "middle");
+          val.setAttribute("font-size", "12");
+          val.setAttribute("fill", "rgba(0,0,0,.75)");
+          val.textContent = Math.round(v1).toLocaleString("ru-RU");
+          svgEl.appendChild(val);
+        }
+      } else {
+        const s = series[p];
+        const v = Number((s.data && s.data[cat]) || 0);
+        const bh = (h - pad * 2) * (v / max);
+        const y = baseY - bh;
+
+        const mainW = pairW * barWidthRatio;
+        const x = slotCenter - mainW/2;
+
+        const rect = document.createElementNS(svgEl.namespaceURI, "rect");
+        rect.setAttribute("x", x);
+        rect.setAttribute("y", y);
+        rect.setAttribute("width", mainW);
+        rect.setAttribute("height", bh);
+        rect.setAttribute("rx", String(rx));
+        rect.setAttribute("fill", colorFor_(p, cat, false));
+        svgEl.appendChild(rect);
+
+        if (showValues && v > 0) {
+          const val = document.createElementNS(svgEl.namespaceURI, "text");
+          val.setAttribute("x", slotCenter);
+          val.setAttribute("y", y - 8);
+          val.setAttribute("text-anchor", "middle");
+          val.setAttribute("font-size", "12");
+          val.setAttribute("fill", "rgba(0,0,0,.75)");
+          val.textContent = Math.round(v).toLocaleString("ru-RU");
+          svgEl.appendChild(val);
+        }
+      }
+    }
   });
 
   svgBox.appendChild(svgEl);
