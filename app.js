@@ -835,7 +835,10 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     if (comms.length === 1){
       const c = comms[0];
       pages.push(renderResultsPage_(r, [{label: c.name, community: c}], false));
-      pages.push(renderCreativesPage_(r, c));
+      const totalCr = (c.creatives||[]).length;
+      for (let i=0; i<totalCr; i+=4){
+        pages.push(renderCreativesPage_(r, c, i));
+      }
       pages.push(renderDetailPage_(r, c));
       pages.push(renderDemoPage_(r, c));
       pages.push(renderStreamsPage_(r));
@@ -977,11 +980,16 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     return el;
   }
 
-  function renderCreativesPage_(r, c){
-  const el = sheet_(false); // было sheet_(true)
+  function renderCreativesPage_(r, c, start=0){
+  const el = sheet_(false);
   const inner = el.querySelector(".sheetInner");
 
-  const pageTitle = `Креативы: ${c.name}`;
+  const total = (c.creatives||[]).length;
+  const pageNo = Math.floor(start/4) + 1;
+  const pages = Math.max(1, Math.ceil(total/4));
+  const pageTitle = pages > 1
+    ? `Креативы: ${c.name} (${pageNo}/${pages})`
+    : `Креативы: ${c.name}`;
 
   inner.insertAdjacentHTML("beforeend", `
     <div class="slideHeader">
@@ -996,7 +1004,7 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
   const row = document.createElement("div");
   row.className = "creativesRow";
 
-  const imgs = (c.creatives||[]).slice(0,4);
+  const imgs = (c.creatives||[]).slice(start, start+4);
   for (const cr of imgs){
     const img = document.createElement("img");
     img.className = "creativeImg";
@@ -1007,7 +1015,7 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
 
   inner.appendChild(row);
   inner.insertAdjacentHTML("beforeend",
-    `<div class="creativesNote">Показаны первые 4 креатива (MVP).</div>`
+    `<div class="creativesNote">Показаны креативы ${start+1}–${start+imgs.length} из ${total}.</div>`
   );
 
   return el;
