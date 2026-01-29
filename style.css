@@ -350,22 +350,20 @@ body{
 /* Креативы: 4 в ряд, без переноса */
 .creativesRow{
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, 235px);
+  justify-content: center;   /* КЛЮЧЕВОЕ */
   gap: 22px;
-  justify-items: center;
-  align-items: center;
   margin-top: 10px;
 }
+
 
 /* Изображение: фиксированный “слайдовый” размер под 4 в ряд */
 .creativeImg{
   width: 245px;       /* ключ: чтобы влезло 4 */
   height: 450px;      /* вертикальные скрины ВК */
   object-fit: contain;
-
   background: transparent !important;
   border: 0 !important;
-
   border-radius: 14px;
   display:block;
 }
