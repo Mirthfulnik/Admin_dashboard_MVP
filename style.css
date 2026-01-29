@@ -538,3 +538,114 @@ body{
   font-size: 12px;
   opacity: .75;
 }
+
+
+/* ===== Demography slide (VK-like mock) ===== */
+.demoGrid{
+  display:grid;
+  grid-template-columns: 240px 1fr 420px;
+  grid-template-rows: auto auto;
+  gap: 22px;
+  align-items: start;
+  margin-top: 10px;
+}
+
+.demoCard{
+  background: rgba(255,255,255,.45);
+  border: 1px solid rgba(255,255,255,0);
+  border-radius: 22px;
+  padding: 18px 18px;
+}
+
+.demoLegendCard{ grid-column: 1; grid-row: 1; align-self: stretch; }
+.demoGenderCard{ grid-column: 2; grid-row: 1; }
+.demoTableCard{  grid-column: 3; grid-row: 1; padding: 16px 18px; display:flex; align-items:center; justify-content:center; }
+.demoTopCard{    grid-column: 1; grid-row: 2; }
+.demoAgeCard{    grid-column: 2 / 4; grid-row: 2; padding: 14px 18px 10px; }
+
+.demoLegendList{
+  display:grid;
+  gap: 12px;
+  padding: 8px 6px;
+}
+.demoLegendItem{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(0,0,0,.85);
+}
+.demoSw{
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display:inline-block;
+}
+
+.demoMiniTable{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: rgba(0,0,0,.88);
+}
+.demoMiniTable th,
+.demoMiniTable td{
+  padding: 10px 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+.demoMiniTable thead th{
+  font-weight: 850;
+  font-size: 14px;
+}
+.demoMiniTable tbody td:first-child{
+  text-align: left;
+  font-weight: 750;
+  opacity: .9;
+  width: 150px;
+}
+.demoMiniTable tr + tr td{
+  border-top: 1px solid rgba(0,0,0,.08);
+}
+
+.demoTopTitle{
+  font-weight: 900;
+  font-size: 16px;
+  line-height: 1.15;
+  color: rgba(0,0,0,.88);
+}
+.demoTopSub{
+  font-weight: 700;
+  opacity: .7;
+}
+.demoTopList{
+  margin-top: 14px;
+  display:grid;
+  gap: 14px;
+}
+.demoTopRow{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+}
+.demoRank{
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgb(132,204,22);
+  color: rgba(0,0,0,.90);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-weight: 950;
+  font-size: 13px;
+}
+.demoTopText{
+  font-weight: 800;
+  color: rgba(0,0,0,.85);
+}
+
+/* Make charts breathe inside demography cards */
+.demoCard .chartBox{ box-shadow:none; background: transparent; padding: 0; }
+.demoCard .chartTitle{ font-weight: 900; }
