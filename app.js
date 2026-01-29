@@ -998,7 +998,6 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
       <img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/>
     </div>
   `);
-
   inner.insertAdjacentHTML("beforeend", `<div class="slideSpacer"></div>`);
 
   const row = document.createElement("div");
@@ -1149,145 +1148,234 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
     return el;
   }
 
+  
   function renderDemoPage_(r, c){
-    const el = sheet_(true);
+    const el = sheet_(false);
     const inner = el.querySelector(".sheetInner");
-    inner.insertAdjacentHTML("beforeend", `<div class="sheetTitle" style="font-size:28px">Демография: ${escapeHtml_(c.name)}</div>`);
 
-    const demo = (c.demoRows||[]);
-    const agg = aggregateDemo_(demo);
-
-     function vkLegendTable_(rows){
-  // rows: [{label, color, pct, value}]
-  return `
-  <div class="vkLegend">
-    ${rows.map(it=>`
-      <div class="vkLegendRow">
-        <span class="vkDot" style="background:${it.color}"></span>
-        <span class="vkLab">${escapeHtml_(it.label)}</span>
-        <span class="vkPct">${escapeHtml_(it.pct)}</span>
-        <span class="vkVal">${escapeHtml_(it.value)}</span>
+    const title = `Демография: ${escapeHtml_(c.name)}`;
+    inner.insertAdjacentHTML("beforeend", `
+      <div class="slideHeader">
+        <img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/>
+        <div class="slideHeaderTitle">${title}</div>
+        <img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/>
       </div>
-    `).join("")}
-  </div>`;
-}
+      <div class="slideSpacer"></div>
+    `);
 
-    // Charts as simple SVG bars (stable in print)
-    // Пол: показы/клики (оверлей) + таблица справа как в ВК
-const genderCats = ["Мужчины","Женщины","Пол не указан"];
+    const demo = (c.demoRows || []);
 
-const genderImpr   = agg.genderImpr || {};
-const genderClicks = agg.genderClicks || {};
-const totalImpr    = sumObj_(genderImpr);
-const totalClicks  = sumObj_(genderClicks);
+    // Aggregates
+    const agg = aggregateDemo_(demo);
+    const genderImpr   = agg.genderImpr || {};
+    const genderClicks = agg.genderClicks || {};
+    const ageGender    = agg.ageGender || {};
 
-     
-// делаем “вк-таблицу” по выбранной метрике.
-// В ВК в UI можно переключать Показы/Клики. В отчёте покажем обе строки (Показы/Клики) через оверлей,
-// а таблицу сделаем по “Показы” (как на скрине с “Показы”), и ниже можем добавить “Итого: …”
-const legendRows = genderCats.map((g, idx)=>({
-  label: g,
-  color: idx===0 ? "rgba(46,118,255,.95)" : idx===1 ? "rgba(226,60,166,.95)" : "rgba(200,206,214,.95)",
-  pct: pct_(genderImpr[g]||0, totalImpr),
-  value: formatInt_(genderImpr[g]||0),
-}));
+    // Spend is needed for "Цена за результат" as CPC (spent / clicks)
+    const genderSpent = {};
+    for (const row0 of demo){
+      const row = normalizeRowKeys_(row0 || {});
+      const g = normalizeGender_(row["Пол"]);
+      const spent =
+        numOrNull_(row["Расход"] ?? row["Расход, ₽"] ?? row["Потрачено всего, ₽"] ?? row["Потрачено, ₽"] ?? row["Потрачено всего"] ?? row["Потрачено"] ?? "") ?? 0;
+      genderSpent[g] = (genderSpent[g]||0) + spent;
+    }
 
-// контейнер “как в ВК”: слева график, справа таблица
-const vkRow1 = document.createElement("div");
-vkRow1.className = "vkRow";
+    const genderCats = ["Мужчины","Женщины","Пол не указан"];
+    const ageCats = ["12-17","18-24","25-34","35-44","45-54","55-64","65+"];
 
-const chart1 = svgGroupedBarChart_("Распределение по полу", genderCats, [
-  {name:"Показы", data: genderImpr},
-  {name:"Клики", data: genderClicks}
-], { 
-  overlayPairs:true, 
-  pairSize:2, 
-  showValues:false,
-  barWidthRatio:0.42,
-  overlayWidthRatio:0.62,
-  categoryColors:{
-    "Мужчины":"rgb(46,118,255)",
-    "Женщины":"rgb(226,60,166)",
-    "Пол не указан":"rgb(200,206,214)",
-    "Итого:":"rgb(200,206,214)"
-  },
-  seriesColors:["rgb(46,118,255)","rgb(46,118,255)"] 
-}); // значения ВК показывает в таблице, не над столбиком
+    const COLORS = {
+      men:   "rgb(59,130,246)",   // blue
+      women: "rgb(236,72,153)",   // pink
+      none:  "rgb(109,40,217)",   // purple
+      click: "rgb(132,204,22)"    // green
+    };
 
-vkRow1.appendChild(chart1);
+    // --- Layout root
+    const grid = document.createElement("div");
+    grid.className = "demoGrid";
+    inner.appendChild(grid);
 
-const side1 = document.createElement("div");
-side1.className = "vkSide";
-side1.innerHTML = `
-  ${vkLegendTable_(legendRows)}
-  <div class="vkTotalRow">
-    <span class="vkTotalLab">Итого</span>
-    <span class="vkTotalVal">${formatInt_(totalImpr)}</span>
-  </div>
-`;
-vkRow1.appendChild(side1);
-inner.appendChild(vkRow1);
+    const card = (cls)=>{
+      const d = document.createElement("div");
+      d.className = "demoCard " + (cls||"");
+      return d;
+    };
 
-
-    // Возраст: показы/клики по полу
-    const ageOrder = ["13-17","18-24","25-34","35-44","45-54","55-64","65+"]; // если в данных “до 17”, оставь “до 17”
-const mk = (g, field)=>{
-  const out = {};
-  for (const a of ageOrder){
-    out[a] = ((agg.ageGender[a] && agg.ageGender[a][g]) ? agg.ageGender[a][g][field] : 0);
-  }
-  return out;
-};
-
-inner.appendChild(svgGroupedBarChart_("Распределение по возрасту", ageOrder, [
-  {name:"Мужчины · Показы", data: mk("Мужчины","impr")},
-  {name:"Мужчины · Клики", data: mk("Мужчины","clicks")},
-  {name:"Женщины · Показы", data: mk("Женщины","impr")},
-  {name:"Женщины · Клики", data: mk("Женщины","clicks")}
-], { 
-  overlayPairs:true, 
-  pairSize:2, 
-  showValues:false,
-  barWidthRatio:0.40,
-  overlayWidthRatio:0.60,
-  seriesColors:[
-    "rgba(46,118,255,0.55)","rgb(46,118,255)",
-    "rgba(226,60,166,0.55)","rgb(226,60,166)"
-  ]
-}));
-
-    // Detail block
-    const maleImpr = genderImpr["Мужчины"] || 0;
-   const femaleImpr = genderImpr["Женщины"] || 0;
-   const maleClicks = genderClicks["Мужчины"] || 0;
-   const femaleClicks = genderClicks["Женщины"] || 0;
-
-    const maleCost = agg.genderCost["Мужчины"];
-    const femaleCost = agg.genderCost["Женщины"];
-
-    const box = document.createElement("div");
-    box.className = "chartBox";
-    box.innerHTML = `
-      <div class="chartTitle">Детализация</div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:12px">
-        <div>
-          <div style="font-weight:900; margin-bottom:6px">Все мужчины</div>
-          <div>Показы: <b>${formatInt_(maleImpr)}</b> (${pct_(maleImpr, totalImpr)})</div>
-          <div>Клики: <b>${formatInt_(maleClicks)}</b> (${pct_(maleClicks, totalClicks)})</div>
-          <div>Цена за результат: <b>${maleCost==null?"—":formatMoney2_(maleCost)}</b></div>
-        </div>
-        <div>
-          <div style="font-weight:900; margin-bottom:6px">Все женщины</div>
-          <div>Показы: <b>${formatInt_(femaleImpr)}</b> (${pct_(femaleImpr, totalImpr)})</div>
-          <div>Клики: <b>${formatInt_(femaleClicks)}</b> (${pct_(femaleClicks, totalClicks)})</div>
-          <div>Цена за результат: <b>${femaleCost==null?"—":formatMoney2_(femaleCost)}</b></div>
-        </div>
+    // 1) Legend card
+    const legendCard = card("demoLegendCard");
+    legendCard.innerHTML = `
+      <div class="demoLegendList">
+        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.men}"></span><span>М • показы</span></div>
+        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.women}"></span><span>Ж • показы</span></div>
+        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.none}"></span><span>Нет пола • показы</span></div>
+        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.click}"></span><span>Клики</span></div>
       </div>
     `;
-    inner.appendChild(box);
+    grid.appendChild(legendCard);
+
+    // 2) Gender chart card
+    const genderCard = card("demoGenderCard");
+    const genderChart = svgGroupedBarChart_(
+      "Распределение по полу",
+      genderCats,
+      [
+        { name: "Показы", data: Object.fromEntries(genderCats.map(k=>[k, genderImpr[k]||0])) },
+        { name: "Клики",  data: Object.fromEntries(genderCats.map(k=>[k, genderClicks[k]||0])) }
+      ],
+      {
+        overlayPairs: true,
+        pairSize: 2,
+        showValues: false,
+        categoryColors: {
+          "Мужчины": COLORS.men,
+          "Женщины": COLORS.women,
+          "Пол не указан": COLORS.none
+        },
+        seriesColors: [COLORS.men, COLORS.click], // legend colors (fallback)
+        pairGap: 18,
+        rx: 10
+      }
+    );
+    genderCard.appendChild(genderChart);
+    grid.appendChild(genderCard);
+
+    // 3) Table card (М / Ж / Всего)
+    const tableCard = card("demoTableCard");
+
+    const sumImpr = genderCats.reduce((s,k)=>s + (genderImpr[k]||0), 0);
+    const sumClicks = genderCats.reduce((s,k)=>s + (genderClicks[k]||0), 0);
+
+    const valPct = (v, total)=>{
+      if (!total) return `${formatInt_(v)} (0%)`;
+      const p = Math.round((v/total)*100);
+      return `${formatInt_(v)} (${p}%)`;
+    };
+
+    const cost = (spent, clicks)=>{
+      if (!clicks) return "—";
+      const v = spent / clicks;
+      return `${formatMoney2_(v)}`;
+    };
+
+    const menI = genderImpr["Мужчины"]||0, womI = genderImpr["Женщины"]||0, noneI = genderImpr["Пол не указан"]||0;
+    const menC = genderClicks["Мужчины"]||0, womC = genderClicks["Женщины"]||0, noneC = genderClicks["Пол не указан"]||0;
+
+    const menSpent = genderSpent["Мужчины"]||0;
+    const womSpent = genderSpent["Женщины"]||0;
+    const noneSpent = genderSpent["Пол не указан"]||0;
+
+    tableCard.innerHTML = `
+      <table class="demoMiniTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th>М</th>
+            <th>Ж</th>
+            <th>Всего</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Показы</td>
+            <td>${escapeHtml_(valPct(menI, sumImpr))}</td>
+            <td>${escapeHtml_(valPct(womI, sumImpr))}</td>
+            <td>${escapeHtml_(valPct(sumImpr, sumImpr))}</td>
+          </tr>
+          <tr>
+            <td>Клики</td>
+            <td>${escapeHtml_(valPct(menC, sumClicks))}</td>
+            <td>${escapeHtml_(valPct(womC, sumClicks))}</td>
+            <td>${escapeHtml_(valPct(sumClicks, sumClicks))}</td>
+          </tr>
+          <tr>
+            <td>Цена за<br/>результат, ₽</td>
+            <td>${escapeHtml_(cost(menSpent, menC))}</td>
+            <td>${escapeHtml_(cost(womSpent, womC))}</td>
+            <td>${escapeHtml_(cost(menSpent+womSpent+noneSpent, sumClicks))}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+    grid.appendChild(tableCard);
+
+    // 4) Top-3 segments by clicks (exclude "Пол не указан")
+    const topCard = card("demoTopCard");
+
+    const segments = [];
+    let totalKnownClicks = 0;
+    for (const a of ageCats){
+      const gObj = ageGender[a] || {};
+      const mc = (gObj["Мужчины"]?.clicks||0);
+      const wc = (gObj["Женщины"]?.clicks||0);
+      totalKnownClicks += (mc + wc);
+      segments.push({g:"М", age:a, clicks:mc});
+      segments.push({g:"Ж", age:a, clicks:wc});
+    }
+    const top = segments
+      .filter(x=>x.clicks>0)
+      .sort((a,b)=>b.clicks-a.clicks)
+      .slice(0,3);
+
+    const pctSeg = (v)=> totalKnownClicks ? Math.round((v/totalKnownClicks)*100) : 0;
+
+    topCard.innerHTML = `
+      <div class="demoTopTitle">ТОП-3 сегмента<br/><span class="demoTopSub">• клики</span></div>
+      <div class="demoTopList">
+        ${[0,1,2].map(i=>{
+          const it = top[i];
+          if (!it) return `
+            <div class="demoTopRow">
+              <span class="demoRank">${i+1}</span>
+              <span class="demoTopText">—</span>
+            </div>`;
+          return `
+            <div class="demoTopRow">
+              <span class="demoRank">${i+1}</span>
+              <span class="demoTopText">${it.g} • ${escapeHtml_(it.age)} (${pctSeg(it.clicks)}%)</span>
+            </div>`;
+        }).join("")}
+      </div>
+    `;
+    grid.appendChild(topCard);
+
+    // 5) Age chart (pairs: men, women; overlay = clicks)
+    const ageCard = card("demoAgeCard");
+
+    const ageMenImpr = {}, ageMenClicks = {}, ageWomenImpr = {}, ageWomenClicks = {};
+    for (const a of ageCats){
+      const gObj = ageGender[a] || {};
+      ageMenImpr[a] = (gObj["Мужчины"]?.impr||0);
+      ageMenClicks[a] = (gObj["Мужчины"]?.clicks||0);
+      ageWomenImpr[a] = (gObj["Женщины"]?.impr||0);
+      ageWomenClicks[a] = (gObj["Женщины"]?.clicks||0);
+    }
+
+    const ageChart = svgGroupedBarChart_(
+      "Распределение по возрасту",
+      ageCats,
+      [
+        { name: "М • показы", data: ageMenImpr },
+        { name: "М • клики",  data: ageMenClicks },
+        { name: "Ж • показы", data: ageWomenImpr },
+        { name: "Ж • клики",  data: ageWomenClicks }
+      ],
+      {
+        overlayPairs: true,
+        pairSize: 2,
+        showValues: false,
+        seriesColors: [COLORS.men, COLORS.click, COLORS.women, COLORS.click],
+        pairGap: 14,
+        rx: 10
+      }
+    );
+
+    ageCard.appendChild(ageChart);
+    grid.appendChild(ageCard);
 
     return el;
   }
+
 
   function renderStreamsPage_(r){
     const el = sheet_(true);
