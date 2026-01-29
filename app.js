@@ -869,20 +869,29 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
   }
 
   function renderCoverPage_(r){
-    const el = sheet_(true);
-    const inner = el.querySelector(".sheetInner");
-    inner.insertAdjacentHTML("beforeend", `
-      <div class="sheetTitle">DIGITAL-ОТЧЁТ</div>
-      <div class="sheetSub">ТАРГЕТИРОВАННАЯ РЕКЛАМА ВКОНТАКТЕ</div>
-      <div class="coverCenter">
-        <div style="display:flex; flex-direction:column; align-items:center">
-          <img class="coverImg" src="${r.coverDataUrl}" alt="cover" />
-          <div class="coverName">${escapeHtml_(r.title)}</div>
-        </div>
+  const el = sheet_(true);
+  const inner = el.querySelector(".sheetInner");
+
+  inner.insertAdjacentHTML("beforeend", `
+    <div class="coverHeader">
+      <img class="lotusLogo" src="assets/logo_black.png" />
+      <div class="coverTitles">
+        <div class="coverTitleMain">DIGITAL-ОТЧЁТ</div>
+        <div class="coverTitleSub">ТАРГЕТИРОВАННАЯ РЕКЛАМА ВКОНТАКТЕ</div>
       </div>
-    `);
-    return el;
-  }
+      <img class="lotusLogo" src="assets/logo_black.png" />
+    </div>
+
+    <div class="coverCenter">
+      <div class="coverBlock">
+        <img class="coverImg" src="${r.coverDataUrl}" alt="cover" />
+        <div class="coverName">${escapeHtml_(r.title)}</div>
+      </div>
+    </div>
+  `);
+
+  return el;
+}
 
   function calcKpisFromAdsRows_(rows){
     const col_ = (row, keys)=>{
