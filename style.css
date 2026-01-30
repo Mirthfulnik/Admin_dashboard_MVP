@@ -249,7 +249,7 @@ body{
 .pageSheet .vkSide{
   background: rgb(219,219,219);
 }
-.pageSheet .chartBox{ border:1px solid rgba(0,0,0,.10); }
+.pageSheet .chartBox{ border:0 !important; overflow:hidden; }
 .pageSheet .table th{ background: rgba(0,0,0,.06); color: rgb(0,0,0); }
 .pageSheet .table td{ color: rgb(0,0,0); }
 
@@ -387,7 +387,7 @@ body{
 .table th,.table td{padding:8px 9px; border-bottom:1px solid rgba(0,0,0,.10)}
 .table th{background:#f6f7fb; text-align:left; font-weight:900}
 
-.chartBox{border:1px solid rgba(0,0,0,.12); border-radius: 12px; padding:10px; margin-top:12px}
+.chartBox{border:0 !important; border-radius: 12px; padding:10px; margin-top:12px; overflow:hidden}
 .chartTitle{font-weight:900; font-size:12px; opacity:.75; margin-bottom:8px}
 .svgChart{width:100%; height:auto}
 
