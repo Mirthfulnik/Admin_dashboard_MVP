@@ -1237,12 +1237,16 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
         overlayPairs: true,
         pairSize: 2,
         showValues: false,
+        showLegend: false,
+        stretch: true,
         categoryColors: {
           "Мужчины": COLORS.men,
           "Женщины": COLORS.women,
           "Пол не указан": COLORS.none
         },
-        seriesColors: [COLORS.men, COLORS.click], // legend colors (fallback)
+        overlayColor: COLORS.click,
+        overlayWidthRatio: 1,
+        seriesColors: [COLORS.men, COLORS.click], // legacy / fallback
         pairGap: 18,
         rx: 10,
         dualAxis: true,
@@ -1377,8 +1381,11 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
         overlayPairs: true,
         pairSize: 2,
         showValues: false,
+        showLegend: false,
+        stretch: true,
         seriesColors: [COLORS.men, COLORS.click, COLORS.women, COLORS.click],
-        pairGap: 14,
+        overlayWidthRatio: 1,
+        pairGap: 10,
         rx: 10,
         dualAxis: true,
         stackOverlayOnBase: true,
@@ -1665,29 +1672,34 @@ async function readXlsx_(file){
 
 
   function svgGroupedBarChart_(title, categories, series, opts = {}) {
-  const w = 1000, h = 220, pad = 30;
+  const w = (opts.width ?? 1000);
+  const h = (opts.height ?? 220);
+  const pad = (opts.pad ?? 30);
   const svgBox = document.createElement("div");
   svgBox.className = "chartBox";
 
-  const legend = series.map((s, i) => {
-    const col = (opts.seriesColors && opts.seriesColors[i]) ? opts.seriesColors[i] : `rgba(122,101,255,${0.25 + i * 0.18})`;
-    return `
-      <span style="display:inline-flex; align-items:center; gap:6px; margin-right:14px">
-        <span style="width:10px; height:10px; border-radius:3px; background:${col}; display:inline-block"></span>
-        <span>${escapeHtml_(s.name)}</span>
-      </span>
-    `;
-  }).join("");
+  const showLegend = (opts.showLegend !== false);
+
+  const legend = showLegend ? series.map((s, i) => {
+      const col = (opts.seriesColors && opts.seriesColors[i]) ? opts.seriesColors[i] : `rgba(122,101,255,${0.25 + i * 0.18})`;
+      return `
+        <span style="display:inline-flex; align-items:center; gap:6px; margin-right:14px">
+          <span style="width:10px; height:10px; border-radius:3px; background:${col}; display:inline-block"></span>
+          <span>${escapeHtml_(s.name)}</span>
+        </span>
+      `;
+    }).join("") : "";
 
   svgBox.innerHTML = `
     <div class="chartTitle" style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px">
       <span>${escapeHtml_(title)}</span>
-      <span style="font-size:12px; opacity:.75; white-space:nowrap">${legend}</span>
+      ${showLegend ? `<span style="font-size:12px; opacity:.75; white-space:nowrap">${legend}</span>` : ``}
     </div>
   `;
 
   const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  if (opts.stretch) svgEl.setAttribute("preserveAspectRatio", "none");
   svgEl.classList.add("svgChart");
 
   const showValues = (opts.showValues !== false);
@@ -1761,6 +1773,10 @@ async function readXlsx_(file){
   };
 
   const colorFor_ = (si, cat, isOverlay)=>{
+    // overlay color override (e.g., clicks always green)
+    if (isOverlay && opts.overlayColor){
+      return toRGBA_(opts.overlayColor, 0.88);
+    }
     // 1) категорные цвета (для графика по полу, где цвет = пол)
     if (opts.categoryColors && opts.categoryColors[cat]){
       const base = opts.categoryColors[cat];
