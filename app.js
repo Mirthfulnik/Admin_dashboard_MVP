@@ -1191,6 +1191,16 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
       click: "rgb(132,204,22)"    // green
     };
 
+
+    // Capitalize words inside demoGrid (первая буква заглавная, остальные строчные).
+    // Однобуквенные токены (М/Ж) и токены с цифрами (25-34) не трогаем.
+    const capWords_ = (s)=>{
+      return String(s||"").replace(/[A-Za-zА-Яа-яЁё]+/g, (w)=>{
+        if (w.length === 1) return w.toUpperCase();
+        return w.slice(0,1).toUpperCase() + w.slice(1).toLowerCase();
+      });
+    };
+
     // --- Layout root
     const grid = document.createElement("div");
     grid.className = "demoGrid";
@@ -1206,10 +1216,10 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
     const legendCard = card("demoLegendCard");
     legendCard.innerHTML = `
       <div class="demoLegendList">
-        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.men}"></span><span>М • показы</span></div>
-        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.women}"></span><span>Ж • показы</span></div>
-        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.none}"></span><span>Нет пола • показы</span></div>
-        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.click}"></span><span>Клики</span></div>
+        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.men}"></span><span>${capWords_("М • показы")}</span></div>
+        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.women}"></span><span>${capWords_("Ж • показы")}</span></div>
+        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.none}"></span><span>${capWords_("Нет пола • показы")}</span></div>
+        <div class="demoLegendItem"><span class="demoSw" style="background:${COLORS.click}"></span><span>${capWords_("Клики")}</span></div>
       </div>
     `;
     grid.appendChild(legendCard);
@@ -1217,11 +1227,11 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
     // 2) Gender chart card
     const genderCard = card("demoGenderCard");
     const genderChart = svgGroupedBarChart_(
-      "Распределение по полу",
+      capWords_("Распределение по полу"),
       genderCats,
       [
-        { name: "Показы", data: Object.fromEntries(genderCats.map(k=>[k, genderImpr[k]||0])) },
-        { name: "Клики",  data: Object.fromEntries(genderCats.map(k=>[k, genderClicks[k]||0])) }
+        { name: capWords_("Показы"), data: Object.fromEntries(genderCats.map(k=>[k, genderImpr[k]||0])) },
+        { name: capWords_("Клики"),  data: Object.fromEntries(genderCats.map(k=>[k, genderClicks[k]||0])) }
       ],
       {
         overlayPairs: true,
@@ -1234,7 +1244,10 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
         },
         seriesColors: [COLORS.men, COLORS.click], // legend colors (fallback)
         pairGap: 18,
-        rx: 10
+        rx: 10,
+        dualAxis: true,
+        stackOverlayOnBase: true,
+        axisTransparent: true
       }
     );
     genderCard.appendChild(genderChart);
@@ -1320,7 +1333,7 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
     const pctSeg = (v)=> totalKnownClicks ? Math.round((v/totalKnownClicks)*100) : 0;
 
     topCard.innerHTML = `
-      <div class="demoTopTitle">ТОП-3 сегмента<br/><span class="demoTopSub">• клики</span></div>
+      <div class="demoTopTitle">${capWords_("ТОП-3 сегмента")}<br/><span class="demoTopSub">• ${capWords_("клики")}</span></div>
       <div class="demoTopList">
         ${[0,1,2].map(i=>{
           const it = top[i];
@@ -1332,7 +1345,7 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
           return `
             <div class="demoTopRow">
               <span class="demoRank">${i+1}</span>
-              <span class="demoTopText">${it.g} • ${escapeHtml_(it.age)} (${pctSeg(it.clicks)}%)</span>
+              <span class="demoTopText">${capWords_(it.g)} • ${escapeHtml_(it.age)} (${pctSeg(it.clicks)}%)</span>
             </div>`;
         }).join("")}
       </div>
@@ -1352,13 +1365,13 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
     }
 
     const ageChart = svgGroupedBarChart_(
-      "Распределение по возрасту",
+      capWords_("Распределение по возрасту"),
       ageCats,
       [
-        { name: "М • показы", data: ageMenImpr },
-        { name: "М • клики",  data: ageMenClicks },
-        { name: "Ж • показы", data: ageWomenImpr },
-        { name: "Ж • клики",  data: ageWomenClicks }
+        { name: capWords_("М • показы"), data: ageMenImpr },
+        { name: capWords_("М • клики"),  data: ageMenClicks },
+        { name: capWords_("Ж • показы"), data: ageWomenImpr },
+        { name: capWords_("Ж • клики"),  data: ageWomenClicks }
       ],
       {
         overlayPairs: true,
@@ -1366,7 +1379,10 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
         showValues: false,
         seriesColors: [COLORS.men, COLORS.click, COLORS.women, COLORS.click],
         pairGap: 14,
-        rx: 10
+        rx: 10,
+        dualAxis: true,
+        stackOverlayOnBase: true,
+        axisTransparent: true
       }
     );
 
@@ -1679,12 +1695,33 @@ async function readXlsx_(file){
   const pairSize = overlayPairs ? (opts.pairSize || 2) : 1;
   const pairCount = overlayPairs ? Math.ceil(series.length / pairSize) : series.length;
 
-  // max
-  const values = [];
-  for (const cat of categories) {
-    for (const s of series) values.push(Number((s.data && s.data[cat]) || 0));
+  // max (with optional dual-axis scaling for overlay pairs)
+  let max = 1;
+  let maxBase = 1;
+  let maxOver = 1;
+
+  if (overlayPairs && opts.dualAxis) {
+    const valsBase = [];
+    const valsOver = [];
+    for (const cat of categories) {
+      for (let p = 0; p < pairCount; p++) {
+        const baseSeries = series[p * pairSize + 0];
+        const overSeries = series[p * pairSize + 1];
+        valsBase.push(Number((baseSeries?.data && baseSeries.data[cat]) || 0));
+        valsOver.push(Number((overSeries?.data && overSeries.data[cat]) || 0));
+      }
+    }
+    maxBase = Math.max(1, ...valsBase);
+    maxOver = Math.max(1, ...valsOver);
+    max = Math.max(maxBase, maxOver);
+  } else {
+    const values = [];
+    for (const cat of categories) {
+      for (const s of series) values.push(Number((s.data && s.data[cat]) || 0));
+    }
+    max = Math.max(1, ...values);
+    maxBase = maxOver = max;
   }
-  const max = Math.max(1, ...values);
 
   const baseY = h - pad;
 
@@ -1694,7 +1731,7 @@ async function readXlsx_(file){
   base.setAttribute("x2", w - pad);
   base.setAttribute("y1", baseY);
   base.setAttribute("y2", baseY);
-  base.setAttribute("stroke", "rgba(0,0,0,.18)");
+  base.setAttribute("stroke", (opts.axisTransparent ? "rgba(0,0,0,0)" : "rgba(0,0,0,.18)"));
   base.setAttribute("stroke-width", "2");
   svgEl.appendChild(base);
 
@@ -1765,8 +1802,8 @@ async function readXlsx_(file){
         const v1 = Number((baseSeries?.data && baseSeries.data[cat]) || 0);
         const v2 = Number((overSeries?.data && overSeries.data[cat]) || 0);
 
-        const bh1 = (h - pad * 2) * (v1 / max);
-        const bh2 = (h - pad * 2) * (v2 / max);
+        const bh1 = (h - pad * 2) * (v1 / (opts.dualAxis ? maxBase : max));
+        const bh2 = (h - pad * 2) * (v2 / (opts.dualAxis ? maxOver : max));
 
         const mainW = pairW * barWidthRatio;
         const overW = mainW * overlayWidthRatio;
@@ -1775,7 +1812,7 @@ async function readXlsx_(file){
         const x2 = slotCenter - overW/2;
 
         const y1 = baseY - bh1;
-        const y2 = baseY - bh2;
+        const y2 = (opts.stackOverlayOnBase ? (y1 - bh2) : (baseY - bh2));
 
         const rect1 = document.createElementNS(svgEl.namespaceURI, "rect");
         rect1.setAttribute("x", x1);
