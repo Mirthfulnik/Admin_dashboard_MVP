@@ -1843,7 +1843,12 @@ svgEl.appendChild(label);
     label.setAttribute("font-size", "12");
     label.setAttribute("fill", "rgba(0,0,0,.75)");
     label.textContent = cat;
-    if (xLabelLetterSpacing) {
+        if (xLabelLetterSpacing) {
+      const spacingValue = typeof xLabelLetterSpacing === "number"
+        ? `${xLabelLetterSpacing}px`
+        : String(xLabelLetterSpacing);
+      label.setAttribute("letter-spacing", spacingValue);
+    }
       label.setAttribute("letter-spacing", String(xLabelLetterSpacing));
     }
     svgEl.appendChild(label);
