@@ -1239,6 +1239,12 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
         showValues: false,
         showLegend: false,
         stretch: true,
+        xLabelFontSize: 16,
+         wrapXLabels: true,
+         xLabelLineHeight: 16,
+         xLabelPadBottom: 6,
+         xLabelLetterSpacing: 0.6,
+
         categoryColors: {
           "Мужчины": COLORS.men,
           "Женщины": COLORS.women,
@@ -1646,14 +1652,47 @@ async function readXlsx_(file){
       rect.setAttribute("fill", "rgba(124,92,255,.55)");
       svgEl.appendChild(rect);
 
-      const label = document.createElementNS(svgEl.namespaceURI, "text");
-      label.setAttribute("x", x + barW/2);
-      label.setAttribute("y", baseY + 16);
-      label.setAttribute("text-anchor", "middle");
-      label.setAttribute("font-size", "12");
-      label.setAttribute("fill", "rgba(0,0,0,.75)");
-      label.textContent = k;
-      svgEl.appendChild(label);
+      // x label (bigger + optional wrap for long labels like "Пол не указан")
+const xFs = (opts.xLabelFontSize ?? 16);
+const xPadBottom = (opts.xLabelPadBottom ?? 6);
+const lineH = (opts.xLabelLineHeight ?? Math.round(xFs * 0.95));
+const letterSp = (opts.xLabelLetterSpacing ?? 0);
+
+const label = document.createElementNS(svgEl.namespaceURI, "text");
+label.setAttribute("x", gx + groupW / 2);
+label.setAttribute("y", h - xPadBottom);
+label.setAttribute("text-anchor", "middle");
+label.setAttribute("font-size", String(xFs));
+label.setAttribute("fill", "rgba(0,0,0,.75)");
+if (letterSp) label.setAttribute("letter-spacing", String(letterSp));
+
+// Если строка длинная и включён wrap — переносим на 2 строки, чтобы не наезжало на соседей
+const wrap = (opts.wrapXLabels === true);
+if (wrap && typeof cat === "string" && cat.includes(" ")) {
+  const parts = cat.split(/\s+/);
+  // 2 строки: первая часть/слово, вторая — остальное
+  const line1 = parts[0];
+  const line2 = parts.slice(1).join(" ");
+
+  // поднимаем первую строку выше, вторую оставляем у baseline
+  const t1 = document.createElementNS(svgEl.namespaceURI, "tspan");
+  t1.setAttribute("x", gx + groupW / 2);
+  t1.setAttribute("dy", String(-Math.round(lineH * 0.55)));
+  t1.textContent = line1;
+
+  const t2 = document.createElementNS(svgEl.namespaceURI, "tspan");
+  t2.setAttribute("x", gx + groupW / 2);
+  t2.setAttribute("dy", String(lineH));
+  t2.textContent = line2;
+
+  label.appendChild(t1);
+  label.appendChild(t2);
+} else {
+  label.textContent = cat;
+}
+
+svgEl.appendChild(label);
+
 
       const val = document.createElementNS(svgEl.namespaceURI, "text");
       val.setAttribute("x", x + barW/2);
