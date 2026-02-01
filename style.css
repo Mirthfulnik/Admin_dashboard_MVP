@@ -543,7 +543,7 @@ body{
 /* ===== Demography slide (VK-like mock) ===== */
 .demoGrid{
   display:grid;
-  grid-template-columns: 220px 373px 400px;
+  grid-template-columns: 220px 2fr 420px;
   grid-template-rows: auto auto;
   gap: 22px;
   align-items: start;
@@ -559,8 +559,8 @@ body{
 }
 
 .demoLegendCard{ grid-column: 1; grid-row: 1; width:220px; height:244px; }
-.demoGenderCard{ grid-column: 2; grid-row: 1; width:373px; height:244px; }
-.demoTableCard{  grid-column: 3; grid-row: 1; width:400px; height:244px; padding: 16px 18px; display:flex; align-items:center; justify-content:center; }
+.demoGenderCard{ grid-column: 2; grid-row: 1; height:244px; }
+.demoTableCard{  grid-column: 3; grid-row: 1; padding: 16px 18px; display:flex; align-items:center; justify-content:center; }
 .demoTopCard{    grid-column: 1; grid-row: 2; width:220px; height:221.06px; }
 .demoAgeCard{    grid-column: 2 / 4; grid-row: 2; height:221.06px; padding: 14px 18px 10px; }
 
