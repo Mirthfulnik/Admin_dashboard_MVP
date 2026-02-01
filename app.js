@@ -1834,7 +1834,7 @@ svgEl.appendChild(label);
 
   categories.forEach((cat, ci) => {
     const gx = pad + ci * groupW;
-  const xLabelLetterSpacing = opts.xLabelLetterSpacing ?? 0;
+
     // x label
     const label = document.createElementNS(svgEl.namespaceURI, "text");
     label.setAttribute("x", gx + groupW / 2);
@@ -1842,15 +1842,7 @@ svgEl.appendChild(label);
     label.setAttribute("text-anchor", "middle");
     label.setAttribute("font-size", "12");
     label.setAttribute("fill", "rgba(0,0,0,.75)");
-        if (xLabelLetterSpacing) {
-      const spacingValue = typeof xLabelLetterSpacing === "number"
-        ? `${xLabelLetterSpacing}px`
-        : String(xLabelLetterSpacing);
-      label.setAttribute("letter-spacing", spacingValue);
-    }
-      label.textContent = cat;
-      label.setAttribute("letter-spacing", String(xLabelLetterSpacing));
-    }
+    label.textContent = cat;
     svgEl.appendChild(label);
 
     for (let p = 0; p < pairCount; p++) {
