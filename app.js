@@ -1243,7 +1243,7 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
          wrapXLabels: true,
          xLabelLineHeight: 16,
          xLabelPadBottom: 6,
-         xLabelLetterSpacing: 0.6,
+         xLabelLetterSpacing: 2,
 
         categoryColors: {
           "Мужчины": COLORS.men,
