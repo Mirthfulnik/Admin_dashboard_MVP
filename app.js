@@ -78,6 +78,39 @@
     return A/B;
   }
 
+
+/** -----------------------------
+ *  Demo files (multi-upload) helpers
+ * -----------------------------*/
+function ensureDemoStorage_(c){
+  // Migration/backward-compat: previously we stored a single demoRows array.
+  if (Array.isArray(c.demoRows) && c.demoRows.length){
+    c.demoFiles = Array.isArray(c.demoFiles) ? c.demoFiles : [];
+    if (!c.demoFiles.length){
+      c.demoFiles.push({
+        id: "demo_" + Math.random().toString(16).slice(2,10),
+        name: "demo.xlsx",
+        rows: c.demoRows
+      });
+    }
+    c.demoRows = null;
+  } else {
+    c.demoFiles = Array.isArray(c.demoFiles) ? c.demoFiles : [];
+  }
+}
+
+function getDemoRows_(c){
+  // If some old state still has demoRows, use it.
+  if (Array.isArray(c.demoRows) && c.demoRows.length) return c.demoRows;
+  const files = Array.isArray(c.demoFiles) ? c.demoFiles : [];
+  const out = [];
+  for (const f of files){
+    if (f && Array.isArray(f.rows) && f.rows.length) out.push(...f.rows);
+  }
+  return out;
+}
+
+
   /** -----------------------------
    *  Router
    * -----------------------------*/
@@ -419,7 +452,8 @@
     r.communities.push({
       communityId, name, vkId,
       adsRows: null,
-      demoRows: null,
+      demoFiles: [], // [{id, name, rows}]
+      demoRows: null, // backward-compat
       creatives: [] // {id, dataUrl, name}
     });
     r.updatedAt = nowIso_();
@@ -439,7 +473,8 @@
 
     for (const c of comms){
       const adsOk = Array.isArray(c.adsRows) && c.adsRows.length>0;
-      const demoOk = Array.isArray(c.demoRows) && c.demoRows.length>0;
+      ensureDemoStorage_(c);
+      const demoOk = getDemoRows_(c).length>0;
       const crCount = (c.creatives||[]).length;
 
       const card = document.createElement("div");
@@ -478,9 +513,17 @@
               <span class="pill ${demoOk ? "badgeOk":"badgeWarn"}">${demoOk ? "загружено":"не загружено"}</span>
             </div>
             <div class="row">
-              <input type="file" accept=".xlsx" data-up="demo" />
+              <input type="file" accept=".xlsx" data-up="demo" multiple />
               <button class="btn danger inline" data-del="demo" ${demoOk ? "":"disabled"}>Удалить</button>
             </div>
+<div class="demoFilesWrap" data-demo-files-wrap ${demoOk ? "":"hidden"}>
+  <div class="miniTableTitle">Файлы демографии</div>
+  <div class="demoFilesList" data-demo-files></div>
+  <div class="row" style="margin-top:8px">
+    <button class="btn danger inline" data-act="demo-clear" ${demoOk ? "":"disabled"}>Очистить все</button>
+  </div>
+</div>
+
             <div class="miniTableWrap" ${demoOk ? "":"hidden"} data-prevwrap="demo">
               <div class="miniTableTitle">Превью (первые 5 строк)</div>
               <table class="miniTable" data-prev="demo"></table>
@@ -515,31 +558,42 @@
       // uploads
       card.querySelectorAll('input[type="file"][data-up]').forEach(inp=>{
         inp.addEventListener("change", async (e)=>{
-          const file = e.target.files && e.target.files[0];
-          const kind = e.target.dataset.up;
-          if (!file) return;
-          try{
-            if (kind==="ads"){
-              const rows = await parseAdsXlsx_(file);
-              c.adsRows = rows;
-              renderCommunityPreviews_(card, c);
-            } else if (kind==="demo"){
-              const rows = await parseDemoXlsx_(file);
-              c.demoRows = rows;
-              renderCommunityPreviews_(card, c);
-            } else if (kind==="creatives"){
-              const files = Array.from(e.target.files||[]);
-              for (const f of files){
-                const dataUrl = await readAsDataURL_(f);
-                c.creatives = c.creatives || [];
-                c.creatives.push({ id:"cr_"+Math.random().toString(16).slice(2,10), name:f.name, dataUrl });
-              }
-              renderCommunityCreativesRow_(card, c);
-            }
-            const r = getCurrentRelease_();
-            r.updatedAt = nowIso_();
-            saveDB_();
-            renderEditor_();
+  const kind = e.target.dataset.up;
+  try{
+    if (kind==="ads"){
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const rows = await parseAdsXlsx_(file);
+      c.adsRows = rows;
+      renderCommunityPreviews_(card, c);
+    } else if (kind==="demo"){
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      ensureDemoStorage_(c);
+      for (const f of files){
+        const rows = await parseDemoXlsx_(f);
+        c.demoFiles.push({
+          id: "demo_" + Math.random().toString(16).slice(2,10),
+          name: f.name,
+          rows
+        });
+      }
+      renderCommunityPreviews_(card, c);
+    } else if (kind==="creatives"){
+      const files = Array.from(e.target.files||[]);
+      if (!files.length) return;
+      for (const f of files){
+        const dataUrl = await readAsDataURL_(f);
+        c.creatives = c.creatives || [];
+        c.creatives.push({ id:"cr_"+Math.random().toString(16).slice(2,10), name:f.name, dataUrl });
+      }
+      renderCommunityCreativesRow_(card, c);
+    }
+    const r = getCurrentRelease_();
+    r.updatedAt = nowIso_();
+    saveDB_();
+    renderEditor_();
+  }catch(err){
           }catch(err){
             console.error(err);
             alert("Ошибка парсинга файла. Проверь формат/колонки.");
@@ -558,7 +612,9 @@
             c.adsRows = null;
           }
           if (kind==="demo"){
-            if (!confirm("Удалить файл демографии и данные?")) return;
+            if (!confirm("Удалить файлы демографии и данные?")) return;
+            ensureDemoStorage_(c);
+            c.demoFiles = [];
             c.demoRows = null;
           }
           const r = getCurrentRelease_();
@@ -586,22 +642,71 @@
     } else {
       adsWrap.hidden = true;
     }
+// demo
+ensureDemoStorage_(c);
+const dWrap = card.querySelector('[data-prevwrap="demo"]');
+const dTbl = card.querySelector('[data-prev="demo"]');
+const dfWrap = card.querySelector('[data-demo-files-wrap]');
+const dfList = card.querySelector('[data-demo-files]');
+const dfClearBtn = card.querySelector('[data-act="demo-clear"]');
 
-    // demo
-    const dWrap = card.querySelector('[data-prevwrap="demo"]');
-    const dTbl = card.querySelector('[data-prev="demo"]');
-    if (Array.isArray(c.demoRows) && c.demoRows.length){
-      dWrap.hidden = false;
-      const demoCostKey =
-  (c.demoRows?.[0] && ("Цена за результат, ₽" in c.demoRows[0])) ? "Цена за результат, ₽"
-  : (c.demoRows?.[0] && ("Цена за результат, Р" in c.demoRows[0])) ? "Цена за результат, Р"
-  : "Цена за результат, ₽";
+const demoRows = getDemoRows_(c);
 
-renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","Показы","Клики", demoCostKey]);
+if (demoRows.length){
+  dWrap.hidden = false;
+  if (dfWrap) dfWrap.hidden = false;
 
-    } else {
-      dWrap.hidden = true;
+  // Preview (first 5 rows)
+  const demoCostKey =
+    (demoRows?.[0] && ("Цена за результат, ₽" in demoRows[0])) ? "Цена за результат, ₽"
+    : (demoRows?.[0] && ("Цена за результат, Р" in demoRows[0])) ? "Цена за результат, Р"
+    : "Цена за результат, ₽";
+
+  renderMiniPreview_(dTbl, demoRows.slice(0,5), ["Возраст","Пол","Показы","Клики", demoCostKey]);
+
+  // Files list
+  if (dfList){
+    dfList.innerHTML = "";
+    const files = c.demoFiles || [];
+    for (const f of files){
+      const row = document.createElement("div");
+      row.className = "demoFileItem";
+      row.innerHTML = `
+        <div class="demoFileName">${escapeHtml_(f.name || "demo.xlsx")}</div>
+        <button class="btn inline danger" data-demo-del="${escapeHtml_(f.id)}">Удалить</button>
+      `;
+      row.querySelector('[data-demo-del]').addEventListener("click", ()=>{
+        if (!confirm("Удалить этот файл демографии?")) return;
+        ensureDemoStorage_(c);
+        c.demoFiles = (c.demoFiles||[]).filter(x=>x.id !== f.id);
+        const r = getCurrentRelease_();
+        r.updatedAt = nowIso_();
+        saveDB_();
+        renderEditor_();
+      });
+      dfList.appendChild(row);
     }
+  }
+
+  // Clear all
+  if (dfClearBtn){
+    dfClearBtn.disabled = !(c.demoFiles && c.demoFiles.length);
+    dfClearBtn.onclick = ()=>{
+      if (!confirm("Удалить все файлы демографии?")) return;
+      ensureDemoStorage_(c);
+      c.demoFiles = [];
+      c.demoRows = null;
+      const r = getCurrentRelease_();
+      r.updatedAt = nowIso_();
+      saveDB_();
+      renderEditor_();
+    };
+  }
+} else {
+  dWrap.hidden = true;
+  if (dfWrap) dfWrap.hidden = true;
+  if (dfList) dfList.innerHTML = "";
+}
   }
 
   function renderCommunityCreativesRow_(card, c){
@@ -660,7 +765,8 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     if (!comms.length) return false;
     for (const c of comms){
       if (!Array.isArray(c.adsRows) || !c.adsRows.length) return false;
-      if (!Array.isArray(c.demoRows) || !c.demoRows.length) return false;
+      ensureDemoStorage_(c);
+      if (!getDemoRows_(c).length) return false;
       if (!Array.isArray(c.creatives) || !c.creatives.length) return false; // можно сделать optional, но в MVP фиксируем
     }
     return true;
@@ -784,7 +890,8 @@ renderMiniPreview_(dTbl, c.demoRows.slice(0,5), ["Возраст","Пол","По
     let adsFiles = 0, demoFiles = 0, creatives = 0;
     for (const c of comms){
       if (Array.isArray(c.adsRows) && c.adsRows.length) adsFiles++;
-      if (Array.isArray(c.demoRows) && c.demoRows.length) demoFiles++;
+      ensureDemoStorage_(c);
+      if ((c.demoFiles||[]).length) demoFiles++;
       creatives += (c.creatives||[]).length;
     }
     return {
@@ -1163,7 +1270,8 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
       <div class="slideSpacer"></div>
     `);
 
-    const demo = (c.demoRows || []);
+    ensureDemoStorage_(c);
+    const demo = getDemoRows_(c);
 
     // Aggregates
     const agg = aggregateDemo_(demo);
