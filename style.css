@@ -18,7 +18,6 @@ body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
   background: radial-gradient(1200px 800px at 20% 0%, rgba(124,92,255,.18), transparent 60%),
-              radial-gradient(1200px 800px at 80% 0%, rgba(45,212,191,.12), transparent 60%),
               var(--bg);
   color:var(--text);
 }
