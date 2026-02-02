@@ -594,7 +594,6 @@ function getDemoRows_(c){
     saveDB_();
     renderEditor_();
   }catch(err){
-          }catch(err){
             console.error(err);
             alert("Ошибка парсинга файла. Проверь формат/колонки.");
           }finally{
@@ -999,7 +998,6 @@ if (demoRows.length){
       </div>
     </div>
   `);
-
   return el;
 }
 
