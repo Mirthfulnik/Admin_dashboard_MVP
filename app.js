@@ -1260,6 +1260,7 @@ const capDashParts_ = (s)=>{
         xLabelLineHeight: 16,
         xLabelPadBottom: 6,
         xLabelLetterSpacing: 6,
+        yPadRatio: 1.25,
 
         categoryColors: {
           "Мужчины": COLORS.men,
@@ -1411,7 +1412,8 @@ const capDashParts_ = (s)=>{
         rx: 10,
         dualAxis: true,
         stackOverlayOnBase: true,
-        axisTransparent: true
+        axisTransparent: true,
+        yPadRatio: 1.18,
       }
     );
 
