@@ -1806,7 +1806,7 @@ svgEl.appendChild(label);
   const groupW = (w - pad * 2) / Math.max(1, categories.length);
   const pairGap = opts.pairGap ?? 14;                // больше воздуха => “уже” визуально
   const pairW = (groupW - pairGap * (pairCount - 1)) / Math.max(1, pairCount);
-  const barWidthRatio = opts.barWidthRatio ?? 0.78;  // столбцы уже
+  const barWidthRatio = opts.barWidthRatio ?? 1;  // столбцы уже
   const overlayWidthRatio = opts.overlayWidthRatio ?? 0.55;
 
   const rx = opts.rx ?? 10;
