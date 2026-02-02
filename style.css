@@ -691,3 +691,23 @@ body{
 .demoLegendCard{ padding: 16px 16px; }
 .demoTopCard{ padding: 16px 16px; }
 .demoGenderCard{ padding: 16px 16px; }
+
+/* ===== Streams slide: compact transposed table ===== */
+.streamsTable{
+  table-layout: fixed;
+  width: 100%;
+  margin-top: 12px;
+  font-size: 10px;
+}
+.streamsTable th,
+.streamsTable td{
+  padding: 5px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+.streamsTable thead th:first-child,
+.streamsTable tbody th{
+  text-align: left;
+  width: 70px;
+}
+
