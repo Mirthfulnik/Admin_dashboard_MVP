@@ -1407,7 +1407,7 @@ const capDashParts_ = (s)=>{
         stretch: true,
         seriesColors: [COLORS.men, COLORS.click, COLORS.women, COLORS.click],
         overlayWidthRatio: 1,
-        pairGap: 3,
+        pairGap: 1,
         rx: 10,
         dualAxis: true,
         stackOverlayOnBase: true,
