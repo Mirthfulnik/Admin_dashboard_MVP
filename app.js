@@ -1425,26 +1425,51 @@ const capDashParts_ = (s)=>{
 
 
   function renderStreamsPage_(r){
-    const el = sheet_(true);
-    const inner = el.querySelector(".sheetInner");
-    inner.insertAdjacentHTML("beforeend", `<div class="sheetTitle" style="font-size:28px">График прослушиваний VK</div>`);
-    const rows = (r.streams||[]);
-    const chart = svgLineChart_("VK стримы по дням", rows.map(x=>({x:x.dateISO, y:x.vk})));
-    inner.appendChild(chart);
+  // Как и на остальных слайдах: шапка = [лого] ЗАГОЛОВОК [лого]
+  const el = sheet_(false);
+  const inner = el.querySelector(".sheetInner");
 
-    // table
-    const tab = document.createElement("table");
-    tab.className = "table";
-    tab.innerHTML = `<thead><tr><th>Дата</th><th>VK</th></tr></thead><tbody></tbody>`;
-    const tb = tab.querySelector("tbody");
-    for (const s of rows){
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${escapeHtml_(fmtDateShort_(s.dateISO))}</td><td>${formatInt_(s.vk)}</td>`;
-      tb.appendChild(tr);
-    }
-    inner.appendChild(tab);
-        return el;
-  }
+  inner.insertAdjacentHTML("beforeend", `
+    <div class="slideHeader">
+      <img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/>
+      <div class="slideHeaderTitle">График прослушиваний VK</div>
+      <img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/>
+    </div>
+  `);
+
+  inner.insertAdjacentHTML("beforeend", `<div class="slideSpacer"></div>`);
+
+  const rows = (r.streams || []);
+  const chart = svgLineChart_("VK стримы по дням", rows.map(x=>({ x:x.dateISO, y:x.vk })));
+  inner.appendChild(chart);
+
+  // ===== Таблица (транспонированная): колонки = даты, строки = прослушивания =====
+  const tab = document.createElement("table");
+  tab.className = "table streamsTable";
+
+  const dates = rows.map(s => escapeHtml_(fmtDateShort_(s.dateISO)));
+  const vals  = rows.map(s => formatInt_(s.vk));
+
+  // THEAD: первая ячейка — подпись строки, дальше даты
+  tab.innerHTML = `
+    <thead>
+      <tr>
+        <th>Дата</th>
+        ${dates.map(d => `<th>${d}</th>`).join("")}
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>VK</th>
+        ${vals.map(v => `<td>${v}</td>`).join("")}
+      </tr>
+    </tbody>
+  `;
+
+  inner.appendChild(tab);
+  return el;
+}
+
 
   function renderSimpleTable_(headers, rows){
     const table = document.createElement("table");
