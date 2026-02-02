@@ -1234,16 +1234,16 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
         { name: capWords_("Клики"),  data: Object.fromEntries(genderCats.map(k=>[k, genderClicks[k]||0])) }
       ],
       {
-        overlayPairs: true,
+        overlayPairs: false,
         pairSize: 2,
         showValues: false,
         showLegend: false,
         stretch: true,
-        xLabelFontSize: 16,
+        xLabelFontSize: 18,
          wrapXLabels: true,
          xLabelLineHeight: 16,
          xLabelPadBottom: 6,
-         xLabelLetterSpacing: 2,
+         xLabelLetterSpacing: 6,
 
         categoryColors: {
           "Мужчины": COLORS.men,
