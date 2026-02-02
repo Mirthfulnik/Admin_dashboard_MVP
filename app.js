@@ -1704,9 +1704,23 @@ async function readXlsx_(file){
    * -----------------------------*/
   function normalizeGender_(g){
     const s = String(g||"").trim();
+    const low = s.toLowerCase();
+
+    // Standard buckets used across charts/tables
     if (!s) return "Пол не указан";
-    if (s.toLowerCase().includes("муж")) return "Мужчины";
-    if (s.toLowerCase().includes("жен")) return "Женщины";
+    if (low.includes("муж")) return "Мужчины";
+    if (low.includes("жен")) return "Женщины";
+
+    // Normalize all "unknown/unspecified" variants into one bucket
+    // Examples from exports: "Пол не указан", "Пол не определен", "Не указан", "Нет пола"
+    if (
+      low.includes("не указан") ||
+      low.includes("не указ") ||
+      low.includes("не определ") ||
+      low.includes("нет пола") ||
+      (low.includes("пол") && low.includes("не"))
+    ) return "Пол не указан";
+
     return s;
   }
   function normalizeAge_(a){
