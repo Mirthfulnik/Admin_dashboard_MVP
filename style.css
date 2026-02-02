@@ -17,8 +17,23 @@ html,body{height:100%}
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
-  background: radial-gradient(1200px 800px at 20% 0%, rgba(124,92,255,.18), transparent 60%),
-              var(--bg);
+
+  background:
+    radial-gradient(1200px 800px at 20% 0%,
+      rgba(124,92,255,.18) 0%,
+      rgba(124,92,255,.10) 35%,
+      rgba(124,92,255,.04) 60%,
+      rgba(124,92,255,0) 85%,
+      rgba(124,92,255,0) 100%),
+    radial-gradient(1200px 800px at 80% 0%,
+      rgba(45,212,191,.12) 0%,
+      rgba(45,212,191,.07) 35%,
+      rgba(45,212,191,.03) 60%,
+      rgba(45,212,191,0) 85%,
+      rgba(45,212,191,0) 100%),
+    var(--bg);
+
+  background-repeat: no-repeat;
   color:var(--text);
 }
 
