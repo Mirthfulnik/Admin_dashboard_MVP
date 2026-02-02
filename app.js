@@ -1791,7 +1791,7 @@ svgEl.appendChild(label);
   }
 
    // === Headroom по Y (чтобы столбцы не упирались в верх svg) ===
-  const yPadRatio = (opts.yPadRatio ?? 1.2); // 12% запас сверху (попробуй 1.15 / 1.2 при желании)
+  const yPadRatio = (opts.yPadRatio ?? 2); // 12% запас сверху (попробуй 1.15 / 1.2 при желании)
 
   // общий max (для обычного режима)
   max = Math.max(1, max * yPadRatio);
