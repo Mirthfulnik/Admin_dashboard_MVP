@@ -9,6 +9,21 @@
   <link rel="preload" as="image" href="assets/logo_black.png" />
 </head>
 <body>
+  <div id="loginOverlay" class="loginOverlay">
+  <div class="loginCard">
+    <div class="loginTitle">Вход в сервис</div>
+
+    <label class="loginLabel">Логин</label>
+    <input id="loginUser" class="loginInput" type="text" />
+
+    <label class="loginLabel">Пароль</label>
+    <input id="loginPass" class="loginInput" type="password" />
+
+    <div id="loginError" class="loginError" style="display:none;"></div>
+
+    <button id="loginBtn" class="loginBtn">Войти</button>
+  </div>
+</div>
   <header class="topbar">
     <div class="brand">
       <div class="logo">LM</div>
@@ -272,7 +287,7 @@
     </section>
 
   </main>
-
+  <script src="login.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
