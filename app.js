@@ -1055,8 +1055,6 @@ if (demoRows.length){
     return { impr, clicks };
   }
 
-}
-
   function renderResultsPage_(r, commItems, isMultiSummary, addLabel=false){
     // if isMultiSummary: show "Общие показатели" + mini list? In MVP: first KPI = totals across all communities
     const el = sheet_(false);
