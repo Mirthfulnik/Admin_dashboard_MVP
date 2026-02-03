@@ -1157,6 +1157,13 @@ if (demoRows.length){
 
    function renderDetailPages_(r, c){
   const rows = (c.adsRows || []);
+   rows.sort((a, b) => {
+    const A = normalizeRowKeys_(a || {});
+    const B = normalizeRowKeys_(b || {});
+    const addsA = num_(A["Добавили аудио"] ?? A["Добавления аудио"] ?? A["Добавили"] ?? 0);
+    const addsB = num_(B["Добавили аудио"] ?? B["Добавления аудио"] ?? B["Добавили"] ?? 0);
+    return addsB - addsA;
+  });
   const total = rows.length;
   const perPage = 16;
 
