@@ -923,10 +923,28 @@ if (demoRows.length){
    *  Report render
    * -----------------------------*/
   $("#btn-print").addEventListener("click", ()=>{
-    // Печать только на странице отчёта.
-    go_("report");
-    setTimeout(()=>window.print(), 50);
-  });
+  go_("report");
+
+  const r = getCurrentRelease_();
+  const originalTitle = document.title;
+
+  const safe = (s)=> String(s||"")
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const fileName = safe(`VK DIGITAL-ОТЧЁТ: ${r?.title || ""}`);
+
+  document.title = fileName;
+
+  setTimeout(()=>window.print(), 50);
+
+  window.onafterprint = () => {
+    document.title = originalTitle;
+    window.onafterprint = null;
+  };
+});
+
 
   function renderReport_(){
     syncSelectors_();
