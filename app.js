@@ -7,7 +7,7 @@
 (function(){
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
-
+  const CLOUD_API = "https://<твой-api-gateway-или-function-url>";
   const StoreKey = "lm_vk_report_mvp_v1";
 
   /** -----------------------------
@@ -21,6 +21,31 @@
       streamsPreview: null
     }
   };
+
+   async function cloudPresignPut_({ key, contentType }){
+  const res = await fetch(CLOUD_API + "/presign-put", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ key, contentType })
+  });
+  if (!res.ok) throw new Error("presign-put failed");
+  return res.json(); // { url }
+}
+
+async function cloudPut_({ url, blob, contentType }){
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: blob
+  });
+  if (!res.ok) throw new Error("upload failed");
+}
+
+async function cloudSaveJson_({ key, obj }){
+  const blob = new Blob([JSON.stringify(obj)], {type:"application/json"});
+  const { url } = await cloudPresignPut_({ key, contentType:"application/json" });
+  await cloudPut_({ url, blob, contentType:"application/json" });
+}
 
   function loadDB_(){
     try{
@@ -200,6 +225,60 @@ function getDemoTotals_(c){
     syncSelectors_();
     go_("editor");
   });
+
+   function buildCloudPayload_(r){
+  const out = {
+    releaseId: r.releaseId,
+    artists: r.artists,
+    track: r.track,
+    title: r.title,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    streams: Array.isArray(r.streams) ? r.streams : [],
+    communities: []
+  };
+
+  for (const c of (r.communities || [])){
+    // ВАЖНО: тут ты сам задашь, какие колонки реально нужны
+    const adsMin = (c.adsRows || []).map(x => ({
+      adId: x.adId ?? x["ID объявления"] ?? null,
+      name: x.name ?? x["Название объявления"] ?? null,
+      impr: x.impr ?? x["Показы"] ?? 0,
+      clicks: x.clicks ?? x["Клики"] ?? 0,
+      adds: x.adds ?? x["Добавления"] ?? 0,
+      spent: x.spent ?? x["Потрачено"] ?? 0,
+      cpa: x.cpa ?? x["Ср. стоимость добавления"] ?? null
+    }));
+
+    // demoFiles: храним минимальную форму — rows+totals
+    const demoFiles = (c.demoFiles || []).map(df => ({
+      id: df.id,
+      name: df.name,
+      totals: df.totals || null,
+      rows: (df.rows || []).map(rr => ({
+        age: rr.age ?? rr["Возраст"] ?? null,
+        sex: rr.sex ?? rr["Пол"] ?? null,
+        impr: rr.impr ?? rr["Показы"] ?? 0,
+        clicks: rr.clicks ?? rr["Клики"] ?? 0
+      }))
+    }));
+
+    out.communities.push({
+      communityId: c.communityId,
+      name: c.name,
+      vkId: c.vkId,
+      adsRows: adsMin,
+      demoFiles,
+      // creatives будем хранить как objectKey (после загрузки)
+      creatives: (c.creatives || []).map(cr => ({
+        id: cr.id,
+        name: cr.name,
+        objectKey: cr.objectKey || null
+      }))
+    });
+  }
+  return out;
+}
 
   function renderReleases_(){
     const list = $("#releases-list");
