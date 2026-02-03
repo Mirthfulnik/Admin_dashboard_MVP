@@ -1042,6 +1042,7 @@ if (demoRows.length){
     }
     const avgCost = safeDiv_(spent, adds);
     return { spent, shows, listens, adds, segments: groupIds.size, avgCost };
+   } 
   
   function calcImprClicksFromAdsRows_(rows){
     let impr = 0, clicks = 0;
