@@ -1090,26 +1090,6 @@ if (demoRows.length){
     </div>
   `);
 
-    if (isMultiSummary){
-      const rows = commItems.map(it=>{
-        const kk = calcKpisFromAdsRows_(it.community.adsRows||[]);
-        return { name: it.label, ...kk };
-      });
-      inner.insertAdjacentHTML("beforeend", `<div style="margin-top:14px; font-weight:900; opacity:.8">Сводка по сообществам</div>`);
-      inner.appendChild(renderSimpleTable_(
-        ["Сообщество","Потрачено","Показы","Прослуш.","Добавл.","Сегм.","Ср.цена добав."],
-        rows.map(x=>[
-          x.name,
-          formatMoney2_(x.spent),
-          formatInt_(x.shows),
-          formatInt_(x.listens),
-          formatInt_(x.adds),
-          formatInt_(x.segments),
-          x.avgCost==null ? "—" : formatMoney2_(x.avgCost)
-        ])
-      ));
-    }
-
     return el;
   }
 
