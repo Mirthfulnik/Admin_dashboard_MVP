@@ -1013,7 +1013,7 @@ if (demoRows.length){
     <div class="coverCenter">
       <div class="coverBlock">
         <img class="coverImg" src="${r.coverDataUrl}" alt="cover" />
-        <div class="coverName">${escapeHtml_(r.title)}</div>
+        <div class="coverName">${escapeHtml_((r.title || "").toUpperCase())}</div>
       </div>
     </div>
   `);
@@ -1600,7 +1600,7 @@ const capDashParts_ = (s)=>{
   inner.insertAdjacentHTML("beforeend", `
     <div class="slideHeader">
       <img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/>
-      <div class="slideHeaderTitle">График прослушиваний VK</div>
+      <div class="slideHeaderTitle">Прослушивания VK + BOOM</div>
       <img class="lotusLogo" src="assets/logo_black.png" alt="Lotus Music"/>
     </div>
   `);
@@ -1608,7 +1608,7 @@ const capDashParts_ = (s)=>{
   inner.insertAdjacentHTML("beforeend", `<div class="slideSpacer"></div>`);
 
   const rows = (r.streams || []);
-  const chart = svgLineChart_("VK стримы по дням", rows.map(x=>({ x:x.dateISO, y:x.vk })));
+  const chart = svgLineChart_("VK + BOOM стримы по дням", rows.map(x=>({ x:x.dateISO, y:x.vk })));
   inner.appendChild(chart);
 
   // ===== Таблица (транспонированная): колонки = даты, строки = прослушивания =====
@@ -1628,7 +1628,7 @@ const capDashParts_ = (s)=>{
     </thead>
     <tbody>
       <tr>
-        <th>VK</th>
+        <th>VK + BOOM</th>
         ${vals.map(v => `<td>${v}</td>`).join("")}
       </tr>
     </tbody>
