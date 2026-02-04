@@ -72,13 +72,16 @@
   const CLOUD_INDEX_KEY = "index/releases.json";
   const CLOUD_RELEASE_INDEX_PREFIX = "index/releases/"; // + {releaseId}.json
 
-  const _cloudUrlCache = new Map(); // key -> presigned downloadUrl
+  const _cloudUrlCache = new Map(); // key -> { url, t } (presigned URL cache)
+  const CLOUD_URL_TTL_MS = 240 * 1000; // refresh before 300s expiry
 
   async function cloudObjectUrl_(key){
     if (!key) return "";
-    if (_cloudUrlCache.has(key)) return _cloudUrlCache.get(key);
+    const cached = _cloudUrlCache.get(key);
+    if (cached && cached.url && (Date.now() - cached.t) < CLOUD_URL_TTL_MS) return cached.url;
+
     const { url } = await cloudPresignGet_({ key });
-    _cloudUrlCache.set(key, url);
+    _cloudUrlCache.set(key, { url, t: Date.now() });
     return url;
   }
 
@@ -208,10 +211,10 @@
     // already hydrated or fully local
     if (r._cloudHydrated || (!r.cloudOnly && (r.communities && r.communities.length || r.streams))) {
       // still ensure image urls exist when only keys are present
-      if (r.coverKey && !r.coverDataUrl) r.coverDataUrl = await cloudObjectUrl_(r.coverKey);
+      if (r.coverKey && (!r.coverDataUrl || String(r.coverDataUrl).includes("X-Amz-Algorithm="))) r.coverDataUrl = await cloudObjectUrl_(r.coverKey);
       for (const c of (r.communities || [])){
         for (const cr of (c.creatives || [])){
-          if (cr.objectKey && !cr.dataUrl) cr.dataUrl = await cloudObjectUrl_(cr.objectKey);
+          if (cr.objectKey && (!cr.dataUrl || String(cr.dataUrl).includes("X-Amz-Algorithm="))) cr.dataUrl = await cloudObjectUrl_(cr.objectKey);
         }
       }
       return r;
@@ -417,7 +420,35 @@
     }
   }
   function saveDB_(){
-    localStorage.setItem(StoreKey, JSON.stringify(state.db));
+    // Do not persist short-lived presigned URLs (they expire ~5 minutes)
+    const db = JSON.parse(JSON.stringify(state.db || {}));
+
+    try{
+      const releases = db.releases || {};
+      for (const rid in releases){
+        const r = releases[rid];
+        if (!r) continue;
+
+        if (typeof r.coverDataUrl === "string" && r.coverDataUrl.includes("X-Amz-Algorithm=AWS4-HMAC-SHA256")){
+          r.coverDataUrl = null;
+        }
+        if (Array.isArray(r.communities)){
+          for (const c of r.communities){
+            if (!c || !Array.isArray(c.creatives)) continue;
+            for (const cr of c.creatives){
+              if (!cr) continue;
+              if (typeof cr.dataUrl === "string" && cr.dataUrl.includes("X-Amz-Algorithm=AWS4-HMAC-SHA256")){
+                cr.dataUrl = null;
+              }
+            }
+          }
+        }
+      }
+    }catch(e){
+      // ignore sanitize errors; fall back to storing as-is
+    }
+
+    localStorage.setItem(StoreKey, JSON.stringify(db));
   }
   function uid_(){
     // короткий ID для читаемости, но достаточно уникальный для MVP
@@ -2164,9 +2195,32 @@ function normKey_(s){
 }
 function normalizeRowKeys_(row){
   const out = {};
-  for (const k in row){
+  for (const k in (row || {})){
     out[normKey_(k)] = row[k];
   }
+
+  // ---- Canonicalize common VK export column variants (so cloud snapshots re-render correctly) ----
+  // spent
+  if (out["Потрачено, ₽"] != null && out["Потрачено всего, ₽"] == null) out["Потрачено всего, ₽"] = out["Потрачено, ₽"];
+  if (out["Потрачено, Р"] != null && out["Потрачено всего, Р"] == null) out["Потрачено всего, Р"] = out["Потрачено, Р"];
+  if (out["Потрачено"] != null && out["Потрачено всего"] == null) out["Потрачено всего"] = out["Потрачено"];
+
+  // adds
+  const addsCandidates = ["Добавили", "Добавили в аудио", "Добавили аудио", "Добавили в библиотеку", "Добавили в медиатеку", "Добавления в библиотеку", "Добавления аудио"];
+  if (out["Добавления"] == null){
+    for (const k of addsCandidates){
+      if (out[k] != null) { out["Добавления"] = out[k]; break; }
+    }
+  }
+
+  // listens from ads (not streams chart)
+  const listensCandidates = ["Прослушивания", "Прослушивания VK+BOOM", "Прослушивания VK", "Прослушивания BOOM", "Прослушивания (VK+BOOM)"];
+  if (out["Прослушивания"] == null){
+    for (const k of listensCandidates){
+      if (out[k] != null) { out["Прослушивания"] = out[k]; break; }
+    }
+  }
+
   return out;
 }
 async function readXlsx_(file){
