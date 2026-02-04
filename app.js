@@ -998,6 +998,7 @@ function getDemoTotals_(c){
           <div class="row" style="margin-top:10px; overflow:auto; padding-bottom:4px" data-creatives-row></div>
         </div>
       `;
+
       // delete community
       card.querySelector('[data-act="del"]').addEventListener("click", ()=>{
         if (!confirm("Удалить сообщество и все его данные?")) return;
