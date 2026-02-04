@@ -7,7 +7,7 @@
 (function(){
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
-  const CLOUD_API = "https://<твой-api-gateway-или-function-url>";
+  const CLOUD_API = "https://functions.yandexcloud.net/d4eflrgebtkcansjrlkj";
   const StoreKey = "lm_vk_report_mvp_v1";
 
   /** -----------------------------
