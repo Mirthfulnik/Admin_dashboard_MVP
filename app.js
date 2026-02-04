@@ -1532,7 +1532,7 @@ if (_btnCloudSave){
       pages.push(renderStreamsPage_(r));
     }
 
-    return pages;
+    return pages.flat();
   }
 
   function sheet_(title){
