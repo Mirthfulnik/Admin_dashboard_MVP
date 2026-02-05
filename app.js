@@ -545,10 +545,7 @@ for (const c of (r.communities || [])){
     const track = ($("#"+p+"track")?.value || "").trim();
     const community = ($("#"+p+"community")?.value || "").trim();
     const communityId = ($("#"+p+"communityId")?.value || "").trim();
-    const dateField = ($("#"+p+"dateField")?.value || "updatedAt").trim();
-    const dateFrom = ($("#"+p+"dateFrom")?.value || "").trim(); // YYYY-MM-DD
-    const dateTo = ($("#"+p+"dateTo")?.value || "").trim();     // YYYY-MM-DD
-    return { artist, track, community, communityId, dateField, dateFrom, dateTo };
+    return { artist, track, community, communityId };
   }
 
   function dateIsoToYmd_(iso){
@@ -581,10 +578,6 @@ for (const c of (r.communities || [])){
       const ok = (r.communities || []).some(c => String(c?.vkId||"").trim() === f.communityId);
       if (!ok) return false;
     }
-    if (f.dateFrom || f.dateTo){
-      const ymd = dateIsoToYmd_(r[f.dateField] || "");
-      if (!betweenYmd_(ymd, f.dateFrom, f.dateTo)) return false;
-    }
     return true;
   }
 
@@ -596,10 +589,11 @@ for (const c of (r.communities || [])){
     populateSelect_($("#"+p+"track"), opts.tracks, { keepValue: $("#"+p+"track")?.value || "" });
     populateSelect_($("#"+p+"community"), opts.commNames, { keepValue: $("#"+p+"community")?.value || "" });
     populateSelect_($("#"+p+"communityId"), opts.commIds, { keepValue: $("#"+p+"communityId")?.value || "" });
-
-    const df = $("#"+p+"dateField");
-    if (df && !df.value) df.value = "updatedAt";
+   
+    // ensure filter selects keep searchable UI after repopulating options
+    if (typeof enhanceSearchableSelects_ === "function") enhanceSearchableSelects_();
   }
+
   function releaseSearchHaystack_(r){
     const parts = [];
     if (!r) return "";
@@ -725,11 +719,7 @@ function getDemoTotals_(c){
       p + "artist",
       p + "track",
       p + "community",
-      p + "communityId",
-      p + "dateField",
-      p + "dateFrom",
-      p + "dateTo"
-    ];
+      p + "communityId"];
     ids.forEach(id=>{
       const el = $("#"+id);
       if (!el) return;
@@ -752,9 +742,6 @@ function getDemoTotals_(c){
           if (el.tagName === "SELECT") el.value = "";
           else el.value = "";
         });
-        // defaults for dateField
-        const df = $("#"+p+"dateField");
-        if (df) df.value = "updatedAt";
         if (scope === "releases") renderReleases_();
         if (scope === "history") renderHistory_();
       });
@@ -763,6 +750,117 @@ function getDemoTotals_(c){
 
   bindFilters_("releases");
   bindFilters_("history");
+  // --- Searchable dropdowns for filters (combobox) ---
+  function enhanceSearchableSelect_(sel){
+    if (!sel || sel.dataset.searchableEnhanced === "1") return;
+    sel.dataset.searchableEnhanced = "1";
+
+    const wrap = document.createElement("div");
+    wrap.className = "comboSelect";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "comboInput";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.placeholder = "Все";
+
+    const menu = document.createElement("div");
+    menu.className = "comboMenu";
+    menu.hidden = true;
+
+    // move into wrapper
+    const parent = sel.parentElement;
+    parent.insertBefore(wrap, sel);
+    wrap.appendChild(input);
+    wrap.appendChild(sel);
+    wrap.appendChild(menu);
+
+    sel.style.display = "none";
+
+    function getOptions_(){
+      return Array.from(sel.options || []).map(o => ({ value: o.value, text: o.textContent || "" }));
+    }
+
+    function syncInputFromSelect_(){
+      const opt = sel.selectedOptions && sel.selectedOptions[0] ? sel.selectedOptions[0] : null;
+      const txt = opt ? (opt.textContent || "") : "";
+      // показываем выбранное значение; для "Все" оставляем поле пустым (placeholder = "Все")
+      input.value = (sel.value ? txt : "");
+    }
+
+    function open_(){
+      render_(input.value);
+      menu.hidden = false;
+    }
+    function close_(){
+      menu.hidden = true;
+    }
+
+    function render_(q){
+      const qq = String(q || "").trim().toLowerCase();
+      const opts = getOptions_();
+      const filtered = qq ? opts.filter(x => x.text.toLowerCase().includes(qq)) : opts;
+
+      menu.innerHTML = "";
+      if (!filtered.length){
+        const empty = document.createElement("div");
+        empty.className = "comboEmpty";
+        empty.textContent = "Ничего не найдено";
+        menu.appendChild(empty);
+        return;
+      }
+
+      for (const o of filtered){
+        const div = document.createElement("div");
+        div.className = "comboOpt";
+        div.textContent = o.text || "—";
+        div.addEventListener("mousedown", (ev)=>{
+          ev.preventDefault(); // не терять фокус до выбора
+          sel.value = o.value;
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+          syncInputFromSelect_();
+          close_();
+        });
+        menu.appendChild(div);
+      }
+    }
+
+    input.addEventListener("focus", open_);
+    input.addEventListener("click", open_);
+    input.addEventListener("input", ()=>{ if (menu.hidden) menu.hidden = false; render_(input.value); });
+
+    // If user clears input -> treat as "Все"
+    input.addEventListener("keydown", (e)=>{
+      if (e.key === "Escape"){ close_(); input.blur(); }
+      if (e.key === "Enter"){
+        // if nothing typed -> set "Все"
+        if (!String(input.value||"").trim()){
+          sel.value = "";
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+          syncInputFromSelect_();
+          close_();
+        }
+      }
+    });
+
+    sel.addEventListener("change", syncInputFromSelect_);
+
+    document.addEventListener("mousedown", (e)=>{
+      if (!wrap.contains(e.target)) close_();
+    });
+
+    // initial sync
+    syncInputFromSelect_();
+  }
+
+  function enhanceSearchableSelects_(){
+    $$('select[data-searchable="1"]').forEach(enhanceSearchableSelect_);
+  }
+
+  // run once at startup
+  enhanceSearchableSelects_();
+
 
 
   /** -----------------------------
@@ -1900,7 +1998,6 @@ if (_btnCloudSave){
   });
   const total = rows.length;
   const perPage = 16;
-
   const pagesTotal = Math.max(1, Math.ceil(total / perPage));
   const out = [];
 
@@ -2900,7 +2997,6 @@ if (overlayPairs && opts.stackOverlayOnBase) {
         const denom2 = (maxStack != null)
            ? maxStack
            : (opts.dualAxis ? maxOver : max);
-
         const bh1 = (h - pad * 2) * (v1 / denom);
         const bh2 = (h - pad * 2) * (v2 / denom2);
 
