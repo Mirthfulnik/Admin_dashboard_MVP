@@ -151,6 +151,8 @@
             const exists = local.cloudVersions.find(v=>v.ts===meta.lastTs);
             if (!exists) local.cloudVersions.unshift({ ts: meta.lastTs, dataKey: meta.lastDataKey });
           }
+          local._cloudHydrated = false;
+
           changed = true;
         }
       }
@@ -319,6 +321,31 @@
     if (!webp) throw new Error("WEBP encode failed");
     return { blob: webp, w, h };
   }
+
+  async function ensureReleaseHydratedForce_(releaseId){
+    const r = state.db.releases[releaseId];
+    if (!r) return null;
+
+    // Force re-hydration from cloud snapshot even if local data exists
+    const prevCloudOnly = !!r.cloudOnly;
+    r.cloudOnly = true;
+    r._cloudHydrated = false;
+
+    // clear cached signed urls for media, so we re-presign
+    if (r.coverKey) r.coverDataUrl = null;
+    for (const c of (r.communities || [])){
+      for (const cr of (c.creatives || [])){
+        if (cr && cr.objectKey) cr.dataUrl = null;
+      }
+    }
+
+    try{
+      return await ensureReleaseHydrated_(releaseId);
+    }finally{
+      r.cloudOnly = prevCloudOnly;
+    }
+  }
+
 
   function safeKeyPart_(s){
     return String(s||"").trim().replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0,80) || "x";
@@ -800,6 +827,13 @@ function getDemoTotals_(c){
    *  Router
    * -----------------------------*/
   const routes = ["releases","editor","history","report"];
+
+  function activeRoute_(){
+    const el = document.querySelector(".page.active");
+    const id = el && el.id ? String(el.id) : "";
+    return id.startsWith("page-") ? id.slice(5) : "releases";
+  }
+
   async function go_(route){
     routes.forEach(r=>{
       const page = $("#page-"+r);
@@ -1052,8 +1086,22 @@ function getDemoTotals_(c){
         setLocked_(btnCloudRefresh, true);
         const t0 = btnCloudRefresh.textContent;
         btnCloudRefresh.textContent = "Обновление…";
+
+        // Drop cached presigned URLs to avoid stale/expired links
+        _cloudUrlCache.clear();
+
         await cloudSyncFromIndex_();
+
+        // If a release is currently selected, force re-hydration (data + media URLs)
+        if (state.currentReleaseId){
+          await ensureReleaseHydratedForce_(state.currentReleaseId);
+          const ar = activeRoute_();
+          if (ar === "editor") renderEditor_();
+          if (ar === "report") renderReport_();
+        }
+
         btnCloudRefresh.textContent = t0 || "Обновить из облака";
+
       }catch(e){
         console.error(e);
         alert("Не удалось обновить из облака: " + (e && e.message ? e.message : e));
