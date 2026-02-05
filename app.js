@@ -2050,7 +2050,7 @@ if (_btnCloudSave){
   // Keep report scale aligned with viewport/orientation.
   window.addEventListener("resize", ()=>{ updateReportScale_(); });
   window.addEventListener("orientationchange", ()=>{ setTimeout(updateReportScale_, 50); });
-mobile scaling without changing page geometry.
+/* mobile scaling without changing page geometry. */
       const vp = document.createElement("div");
       vp.className = "sheetViewport";
       vp.appendChild(p);
