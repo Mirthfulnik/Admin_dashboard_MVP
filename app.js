@@ -480,7 +480,6 @@ for (const c of (r.communities || [])){
     if (!a && t) return t;
     return `${a} - ${t}`;
   }
-  }
 
   // ===== Filters helpers (Releases / History) =====
   function uniqSorted_(arr){
@@ -951,32 +950,35 @@ function getDemoTotals_(c){
   const reportSelect = $("#report-release-select");
 
   function syncSelectors_(){
-    const all = Object.values(state.db.releases || {});
-    updateFiltersUi_("history", all);
-
-    const f = getFiltersFromDom_("history");
-    const releases = all
-      .filter(r => releasePassesFilters_(r, f))
+    const releases = Object.values(state.db.releases || {})
       .sort((a,b)=> (b.updatedAt||"").localeCompare(a.updatedAt||""));
 
-    $("#history-count").textContent = `${releases.length}/${all.length}`;
-    list.innerHTML = "";
-    if (!releases.length){
-      list.innerHTML = `<div class="muted">Ничего не найдено по выбранным фильтрам.</div>`;
-      return;
-    }
-    for (const r of releases){
+    function fillSelect_(sel){
+      if (!sel) return;
+      const prev = sel.value || "";
+      sel.innerHTML = "";
+      for (const r of releases){
         const o = document.createElement("option");
         o.value = r.releaseId;
-        o.textContent = r.title;
+        o.textContent = r.title || r.releaseId;
         sel.appendChild(o);
       }
-      const choose = state.currentReleaseId && state.db.releases[state.currentReleaseId] ? state.currentReleaseId : releases[0].releaseId;
-      state.currentReleaseId = choose;
-      sel.value = choose;
-    };
-    makeOptions(editorSelect);
-    makeOptions(reportSelect);
+      // Choose current release
+      let choose = state.currentReleaseId;
+      if (!choose || !state.db.releases[choose]){
+        choose = releases[0] ? releases[0].releaseId : "";
+      }
+      state.currentReleaseId = choose || null;
+
+      if (choose && (prev === choose || releases.find(x=>x.releaseId===choose))){
+        sel.value = choose;
+      } else if (releases[0]) {
+        sel.value = releases[0].releaseId;
+      }
+    }
+
+    fillSelect_(editorSelect);
+    fillSelect_(reportSelect);
   }
 
   editorSelect.addEventListener("change", async ()=>{
