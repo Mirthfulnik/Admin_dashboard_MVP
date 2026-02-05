@@ -36,12 +36,21 @@
     <div class="brandSub">Yandex Cloud</div>
   </div>
 </div>
+
+    <button class="burgerBtn" id="btn-burger" type="button" aria-label="Меню" aria-expanded="false">☰</button>
     <nav class="nav">
       <button class="tabBtn active" data-route="releases">Релизы</button>
       <button class="tabBtn" data-route="editor">Конструктор</button>
       <button class="tabBtn" data-route="history">История</button>
       <button class="tabBtn" data-route="report">Отчёт</button>
     </nav>
+
+    <div class="navDrawer" id="mobileNav" hidden>
+      <button class="tabBtn active" data-route="releases" type="button">Релизы</button>
+      <button class="tabBtn" data-route="editor" type="button">Конструктор</button>
+      <button class="tabBtn" data-route="history" type="button">История</button>
+      <button class="tabBtn" data-route="report" type="button">Отчёт</button>
+    </div>
   </header>
 
   <main class="container">
