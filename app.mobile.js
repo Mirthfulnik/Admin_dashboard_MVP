@@ -867,22 +867,49 @@ function initMobileUi_(){
     vp.appendChild(reportRoot);
   }
 
+// Ensure each .pageSheet is wrapped into a sized container so vertical list
+  // reflects the scaled height (transform doesn't affect layout).
+  function wrapReportSheets_(){
+    const root = document.getElementById("report-root");
+    if (!root) return;
+    const sheets = Array.from(root.querySelectorAll(".pageSheet"));
+    for (const sheet of sheets){
+      // already wrapped
+      if (sheet.parentElement && sheet.parentElement.classList.contains("sheetWrap")) continue;
+      const wrap = document.createElement("div");
+      wrap.className = "sheetWrap";
+      sheet.parentNode.insertBefore(wrap, sheet);
+      wrap.appendChild(sheet);
+    }
+  }
+  
+  // Observe report root for new pages and wrap them automatically
+  (function(){
+    const root = document.getElementById("report-root");
+    if (!root) return;
+    const obs = new MutationObserver(()=>{ wrapReportSheets_(); });
+    obs.observe(root, { childList:true, subtree:true });
+  })();
+
   // Fit A4 landscape (1123px) page into viewport width
   function updateReportScale_(){
     const root = document.getElementById("report-root");
     if (!root) return;
 
-    // If there are no sheets yet, keep scale=1
+    // Wrap pages so scaled height is reflected in layout
+    wrapReportSheets_();
+
     const sheet = root.querySelector(".pageSheet");
     if (!sheet) { document.documentElement.style.setProperty("--reportScale", "1"); return; }
 
-    const baseW = 1123; // must match .pageSheet width in CSS
-    const pad = 12;     // visual padding inside viewport
+    const baseW = 1123; // A4 landscape width at 96dpi
+    const pad = 16;     // safe padding inside viewport
     const vp = root.parentElement && root.parentElement.classList.contains("reportViewport")
       ? root.parentElement
       : root;
 
-    const avail = Math.max(240, (vp.getBoundingClientRect().width || window.innerWidth) - pad);
+    const vpW = (vp.getBoundingClientRect().width || window.innerWidth);
+    const avail = Math.max(240, vpW - pad);
     const s = Math.min(1, avail / baseW);
 
     document.documentElement.style.setProperty("--reportScale", String(s));
@@ -890,6 +917,7 @@ function initMobileUi_(){
 
   // Recalc on resize/orientation
   window.addEventListener("resize", ()=>{ updateReportScale_(); }, { passive:true });
+  window.addEventListener("orientationchange", ()=>{ setTimeout(updateReportScale_, 50); }, { passive:true });
 
   // Monkey-patch router to recalc when entering report
   try{
