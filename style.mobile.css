@@ -1,11 +1,13 @@
+*/
+@import url("style.css");
+
 /* Elements that must never appear on desktop */
 .mobileOnly, .mobileOnlyHint{ display:none !important; }
-html.isMobile .mobileOnly, html.isMobile .mobileOnlyHint{ display: initial !important; }
+html.isMobile .mobileOnly,
+html.isMobile .mobileOnlyHint { display: revert !important; }
 
 /* Mobile/Tablet skin for Lotus Music VK Digital-Отчёт (MVP)
    Loads base desktop styles and overrides layout + navigation for touch devices.
-*/
-@import url("style.css");
 
 /* --------
    Breakpoint: tablets + phones
