@@ -800,13 +800,25 @@ function getDemoTotals_(c){
    *  Router
    * -----------------------------*/
   const routes = ["releases","editor","history","report"];
-  function go_(route){
+  async function go_(route){
     routes.forEach(r=>{
       const page = $("#page-"+r);
       if (page) page.classList.toggle("active", r===route);
       const btn = $(`.tabBtn[data-route="${r}"]`);
       if (btn) btn.classList.toggle("active", r===route);
     });
+
+    // Ensure cloud-only releases are hydrated before opening Editor/Report
+    if ((route === "editor" || route === "report") && state.currentReleaseId){
+      try{
+        await ensureReleaseHydrated_(state.currentReleaseId);
+      }catch(e){
+        console.error(e);
+        alert("Не удалось загрузить данные релиза из облака: " + (e?.message || e));
+        return;
+      }
+    }
+
     if (route==="releases") renderReleases_();
     if (route==="editor") renderEditor_();
     if (route==="history") renderHistory_();
@@ -816,7 +828,7 @@ function getDemoTotals_(c){
   /** -----------------------------
    *  Init nav
    * -----------------------------*/
-  $$(".tabBtn").forEach(b=>b.addEventListener("click", ()=>go_(b.dataset.route)));
+  $$(".tabBtn").forEach(b=>b.addEventListener("click", async ()=>{ await go_(b.dataset.route); }));
 
   // Search inputs (Releases / History) — filter controls
   function bindFilters_(scope){
@@ -1760,7 +1772,7 @@ if (demoRows.length){
     // В MVP ничего “не билдим” серверно: просто переходим на отчёт.
     go_("report");
   });
-  $("#btn-open-report").addEventListener("click", ()=> go_("report"));
+  $("#btn-open-report").addEventListener("click", async ()=>{ await go_("report"); });
 
   $("#btn-delete-release").addEventListener("click", ()=>{
     const r = getCurrentRelease_();
