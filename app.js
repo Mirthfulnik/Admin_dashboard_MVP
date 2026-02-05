@@ -581,18 +581,51 @@ for (const c of (r.communities || [])){
     return true;
   }
 
-  function updateFiltersUi_(scope, releases){
-    const opts = collectReleaseFilterOptions_(releases);
+   function releasePassesFiltersExcluding_(r, f, excludeKey){
+  const ff = f || {};
+  const f2 = {
+    artist: excludeKey === "artist" ? "" : (ff.artist || ""),
+    track: excludeKey === "track" ? "" : (ff.track || ""),
+    community: excludeKey === "community" ? "" : (ff.community || ""),
+    communityId: excludeKey === "communityId" ? "" : (ff.communityId || "")
+  };
+  return releasePassesFilters_(r, f2);
+}
 
-    const p = scope + "-filter-";
-    populateSelect_($("#"+p+"artist"), opts.artists, { keepValue: $("#"+p+"artist")?.value || "" });
-    populateSelect_($("#"+p+"track"), opts.tracks, { keepValue: $("#"+p+"track")?.value || "" });
-    populateSelect_($("#"+p+"community"), opts.commNames, { keepValue: $("#"+p+"community")?.value || "" });
-    populateSelect_($("#"+p+"communityId"), opts.commIds, { keepValue: $("#"+p+"communityId")?.value || "" });
-   
-    // ensure filter selects keep searchable UI after repopulating options
-    if (typeof enhanceSearchableSelects_ === "function") enhanceSearchableSelects_();
-  }
+function collectOptionsByFacet_(allReleases, scope){
+  const f = getFiltersFromDom_(scope);
+
+  const by = (excludeKey) =>
+    (allReleases || []).filter(r => releasePassesFiltersExcluding_(r, f, excludeKey));
+
+  return {
+    artist: collectReleaseFilterOptions_(by("artist")).artists,
+    track: collectReleaseFilterOptions_(by("track")).tracks,
+    community: collectReleaseFilterOptions_(by("community")).commNames,
+    communityId: collectReleaseFilterOptions_(by("communityId")).commIds
+  };
+}
+
+  function updateFiltersUi_(scope, releases){
+  const p = scope + "-filter-";
+
+  const cur = getFiltersFromDom_(scope);
+  const facets = collectOptionsByFacet_(releases, scope);
+
+  const selArtist = $("#"+p+"artist");
+  const selTrack = $("#"+p+"track");
+  const selComm = $("#"+p+"community");
+  const selCommId = $("#"+p+"communityId");
+
+  // наполняем, стараясь сохранить текущее значение
+  populateSelect_(selArtist, facets.artist, { keepValue: cur.artist });
+  populateSelect_(selTrack, facets.track, { keepValue: cur.track });
+  populateSelect_(selComm, facets.community, { keepValue: cur.community });
+  populateSelect_(selCommId, facets.communityId, { keepValue: cur.communityId });
+
+  // вернуть searchable UI (у тебя уже есть)
+  if (typeof enhanceSearchableSelects_ === "function") enhanceSearchableSelects_();
+}
 
   function releaseSearchHaystack_(r){
     const parts = [];
@@ -736,15 +769,22 @@ function getDemoTotals_(c){
     const clearBtn = $("#"+scope+"-filters-clear");
     if (clearBtn){
       clearBtn.addEventListener("click", ()=>{
-        ids.forEach(id=>{
-          const el = $("#"+id);
-          if (!el) return;
-          if (el.tagName === "SELECT") el.value = "";
-          else el.value = "";
-        });
-        if (scope === "releases") renderReleases_();
-        if (scope === "history") renderHistory_();
-      });
+  ids.forEach(id=>{
+    const el = $("#"+id);
+    if (!el) return;
+
+    if (el.tagName === "SELECT"){
+      el.value = "";
+      el.dispatchEvent(new Event("change", { bubbles: true })); // <-- важно
+    } else {
+      el.value = "";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+
+  if (scope === "releases") renderReleases_();
+  if (scope === "history") renderHistory_();
+});
     }
   }
 
@@ -992,6 +1032,7 @@ function getDemoTotals_(c){
 
     const all = Object.values(state.db.releases || {});
     updateFiltersUi_("releases", all);
+
 
     const f = getFiltersFromDom_("releases");
     const releases = all
