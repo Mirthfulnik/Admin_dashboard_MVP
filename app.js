@@ -842,35 +842,35 @@ function getDemoTotals_(c){
     const clearBtn = $("#"+scope+"-filters-clear");
     if (clearBtn){
       clearBtn.addEventListener("click", ()=>{
-  // Clear all filter controls inside the page (not only the 4 select fields).
   const page = $("#page-"+scope) || document;
   const prefix = scope + "-filter-";
 
-  // 1) Clear native controls that have ids with the prefix
-  page.querySelectorAll(`[id^="${prefix}"]`).forEach(el=>{
-    if (!el) return;
-    const tag = (el.tagName || "").toUpperCase();
+  // Важно: не спамим render'ами при очистке
+  const prevGuard = _pairSyncGuard[scope];
+  _pairSyncGuard[scope] = true;
+  try{
+    // 1) Clear native controls that have ids with the prefix
+    page.querySelectorAll(`[id^="${prefix}"]`).forEach(el=>{
+      if (!el) return;
+      const tag = (el.tagName || "").toUpperCase();
 
-    if (tag === "SELECT"){
-      el.value = "";
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-    } else if (tag === "INPUT" || tag === "TEXTAREA"){
-      el.value = "";
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-  });
+      if (tag === "SELECT"){
+        el.value = "";
+      } else if (tag === "INPUT" || tag === "TEXTAREA"){
+        el.value = "";
+      }
+    });
 
-  // 2) Clear combobox inputs (visible) for our searchable selects
-  page.querySelectorAll(`select[id^="${prefix}"][data-searchable="1"]`).forEach(sel=>{
-    const wrap = sel.closest(".comboSelect");
-    const input = wrap ? wrap.querySelector(".comboInput") : null;
-    if (input) input.value = "";
-    // menu lives in body now; close it
-    if (sel && sel.id){
-      document.querySelectorAll(`.comboMenu[data-owner-select-id="${sel.id}"]`).forEach(menu=>{ menu.hidden = true; });
-    }
-  });
+    // 2) Clear combobox inputs (visible searchable UI), if any
+    page.querySelectorAll(".comboSelect .comboInput").forEach(inp=>{
+      inp.value = "";
+      inp.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  } finally {
+    _pairSyncGuard[scope] = prevGuard;
+  }
 
+  // Один финальный ререндер в “чистом” состоянии
   if (scope === "releases") renderReleases_();
   if (scope === "history") renderHistory_();
 });
