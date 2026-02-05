@@ -42,10 +42,10 @@
       <button class="tabBtn" data-route="history">История</button>
       <button class="tabBtn" data-route="report">Отчёт</button>
     </nav>
-  <button class="burgerBtn" id="burgerBtn" aria-label="Меню">☰</button>
+  <button class="burgerBtn mobileOnly" id="burgerBtn" aria-label="Меню">☰</button>
 </header>
 
-<div class="drawer" id="drawer">
+<div class="drawer mobileOnly" id="drawer">
   <div class="drawerBackdrop" id="drawerBackdrop"></div>
   <div class="drawerPanel" role="dialog" aria-label="Меню">
     <div class="drawerHead">
@@ -53,7 +53,7 @@
       <button class="drawerClose" id="drawerClose" aria-label="Закрыть">✕</button>
     </div>
     <div class="drawerNav" id="drawerNav"></div>
-    <div class="hint" style="margin-top:auto">
+    <div class="hint mobileOnlyHint" style="margin-top:auto">
       На смартфонах и планшетах используется мобильная навигация.
     </div>
   </div>
@@ -347,13 +347,23 @@
   </main>
 <script>
   (function(){
-    var isMobile = window.matchMedia && window.matchMedia("(max-width: 1024px)").matches;
+    function isMobileDevice(){
+      var ua = navigator.userAgent || "";
+      var uaDataMobile = (navigator.userAgentData && navigator.userAgentData.mobile) ? true : false;
+      var uaMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(ua);
+      var touch = (navigator.maxTouchPoints || 0) > 0;
+      var small = (window.matchMedia && window.matchMedia("(max-width: 1024px)").matches) ? true : false;
+      // Prefer explicit mobile/tablet UA; fallback to touch+small to avoid narrow desktop windows.
+      return !!(uaDataMobile || uaMobile || (touch && small));
+    }
+    var isMobile = isMobileDevice();
     // Expose to app to enable burger + report scaling.
     window.__LM_MOBILE__ = !!isMobile;
+    try{ document.documentElement.classList.toggle("isMobile", !!isMobile); }catch(e){}
 
     // swap stylesheet if needed
     var link = document.getElementById("appStyle");
-    if (link && isMobile) link.href = "style.mobile.css";
+    if (link) link.href = isMobile ? "style.mobile.css" : "style.css";
 
     function addScript(src){
       var s = document.createElement("script");
