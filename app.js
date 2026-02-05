@@ -1009,9 +1009,9 @@ function getDemoTotals_(c){
     syncInputFromSelect_();
   }
 
-  function enhanceSearchableSelects_()(){
-    $$('select[data-searchable="1"]').forEach(enhanceSearchableSelect_);
-  }
+  function enhanceSearchableSelects_(){
+  $$('select[data-searchable="1"]').forEach(enhanceSearchableSelect_);
+}
 
   // run once at startup
   enhanceSearchableSelects_();
