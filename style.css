@@ -109,7 +109,7 @@ body{
 .grid.cols2{grid-template-columns: 1fr 1fr}
 
 /* ===== Filters (Releases / History) ===== */
-Grid{
+.filtersGrid{
   display:grid;
   margin-bottom: 14px;
   grid-template-columns: repeat(4, 1fr);
