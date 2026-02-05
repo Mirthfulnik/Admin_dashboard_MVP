@@ -113,31 +113,68 @@ body{
 .filtersGrid{
   display:grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 14px;
   align-items:end;
+  margin-top: 14px;
 }
-.filtersDate{ grid-column: span 3; }
-.filtersActions{
+.filtersBottomRow{
   display:flex;
   justify-content:flex-end;
-  align-items:end;
+  margin-top: 14px;
+  margin-bottom: 14px; /* воздух до списка */
 }
-.filtersDateRow{
-  display:flex;
-  gap:8px;
-  align-items:center;
+
+/* searchable select (combobox) */
+.comboSelect{ position:relative; }
+.comboSelect input.comboInput{
+  width:100%;
+  background: rgba(255,255,255,.04);
+  border:1px solid var(--line);
+  color:var(--text);
+  border-radius:12px;
+  padding:10px 11px;
+  outline:none;
 }
-.filtersDateField{
-  max-width: 160px;
+.comboSelect input.comboInput:focus{
+  border-color: rgba(124,92,255,.65);
+  box-shadow: 0 0 0 4px rgba(124,92,255,.12);
+}
+.comboSelect .comboMenu{
+  position:absolute;
+  left:0; right:0;
+  top: calc(100% + 6px);
+  max-height: 260px;
+  overflow:auto;
+  background: rgba(18,22,34,.98);
+  border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow: var(--shadow);
+  padding:6px;
+  z-index: 30;
+}
+.comboSelect .comboOpt{
+  padding:8px 10px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size: 13px;
+}
+.comboSelect .comboOpt:hover{
+  background: rgba(255,255,255,.06);
+}
+.comboSelect .comboEmpty{
+  padding:8px 10px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 @media (max-width:980px){
   .filtersGrid{ grid-template-columns: 1fr 1fr; }
-  .filtersDate{ grid-column: span 2; }
-  .filtersActions{ justify-content:flex-start; }
+  .filtersBottomRow{ justify-content:flex-start; }
 }
 @media (max-width:520px){
   .filtersGrid{ grid-template-columns: 1fr; }
+  .filtersBottomRow{ justify-content:flex-start; }
+}
   .filtersDate{ grid-column: span 1; }
   .filtersDateRow{ flex-direction:column; align-items:stretch; }
   .filtersDateField{ max-width: none; width:100%; }
