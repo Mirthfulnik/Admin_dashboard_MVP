@@ -842,16 +842,32 @@ function getDemoTotals_(c){
     const clearBtn = $("#"+scope+"-filters-clear");
     if (clearBtn){
       clearBtn.addEventListener("click", ()=>{
-  ids.forEach(id=>{
-    const el = $("#"+id);
-    if (!el) return;
+  // Clear all filter controls inside the page (not only the 4 select fields).
+  const page = $("#page-"+scope) || document;
+  const prefix = scope + "-filter-";
 
-    if (el.tagName === "SELECT"){
+  // 1) Clear native controls that have ids with the prefix
+  page.querySelectorAll(`[id^="${prefix}"]`).forEach(el=>{
+    if (!el) return;
+    const tag = (el.tagName || "").toUpperCase();
+
+    if (tag === "SELECT"){
       el.value = "";
-      el.dispatchEvent(new Event("change", { bubbles: true })); // <-- важно
-    } else {
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    } else if (tag === "INPUT" || tag === "TEXTAREA"){
       el.value = "";
       el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+
+  // 2) Clear combobox inputs (visible) for our searchable selects
+  page.querySelectorAll(`select[id^="${prefix}"][data-searchable="1"]`).forEach(sel=>{
+    const wrap = sel.closest(".comboSelect");
+    const input = wrap ? wrap.querySelector(".comboInput") : null;
+    if (input) input.value = "";
+    // menu lives in body now; close it
+    if (sel && sel.id){
+      document.querySelectorAll(`.comboMenu[data-owner-select-id="${sel.id}"]`).forEach(menu=>{ menu.hidden = true; });
     }
   });
 
@@ -878,16 +894,20 @@ function getDemoTotals_(c){
     input.spellcheck = false;
     input.placeholder = "Все";
 
+    // Menu is rendered in <body> to avoid clipping by overflow/stacking contexts
     const menu = document.createElement("div");
     menu.className = "comboMenu";
     menu.hidden = true;
+    menu.style.position = "fixed";
+    menu.style.zIndex = "9999";
+    menu.dataset.ownerSelectId = sel.id || "";
 
     // move into wrapper
     const parent = sel.parentElement;
     parent.insertBefore(wrap, sel);
     wrap.appendChild(input);
     wrap.appendChild(sel);
-    wrap.appendChild(menu);
+    document.body.appendChild(menu);
 
     sel.style.display = "none";
 
@@ -902,9 +922,22 @@ function getDemoTotals_(c){
       input.value = (sel.value ? txt : "");
     }
 
+    function positionMenu_(){
+      if (menu.hidden) return;
+      const r = input.getBoundingClientRect();
+      menu.style.left = r.left + "px";
+      menu.style.top = (r.bottom + 4) + "px";
+      menu.style.width = r.width + "px";
+      // cap height to viewport
+      const maxH = Math.max(120, window.innerHeight - (r.bottom + 12));
+      menu.style.maxHeight = maxH + "px";
+      menu.style.overflowY = "auto";
+    }
+
     function open_(){
       render_(input.value);
       menu.hidden = false;
+      positionMenu_();
     }
     function close_(){
       menu.hidden = true;
@@ -921,6 +954,7 @@ function getDemoTotals_(c){
         empty.className = "comboEmpty";
         empty.textContent = "Ничего не найдено";
         menu.appendChild(empty);
+        positionMenu_();
         return;
       }
 
@@ -937,6 +971,7 @@ function getDemoTotals_(c){
         });
         menu.appendChild(div);
       }
+      positionMenu_();
     }
 
     input.addEventListener("focus", open_);
@@ -959,15 +994,22 @@ function getDemoTotals_(c){
 
     sel.addEventListener("change", syncInputFromSelect_);
 
+    // Close on outside click (covers both wrap + menu in body)
     document.addEventListener("mousedown", (e)=>{
-      if (!wrap.contains(e.target)) close_();
+      if (wrap.contains(e.target)) return;
+      if (menu.contains(e.target)) return;
+      close_();
     });
+
+    // Keep menu aligned
+    window.addEventListener("scroll", positionMenu_, true);
+    window.addEventListener("resize", positionMenu_);
 
     // initial sync
     syncInputFromSelect_();
   }
 
-  function enhanceSearchableSelects_(){
+  function enhanceSearchableSelects_()(){
     $$('select[data-searchable="1"]').forEach(enhanceSearchableSelect_);
   }
 
