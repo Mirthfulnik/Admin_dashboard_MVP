@@ -373,35 +373,33 @@
     const ts = tsKey_();
     const prefix = `releases/${r.releaseId}/versions/${ts}/`;
 
-    // Cover (from dataUrl)
-    if (r.coverDataUrl && !r.coverKey){
-      const src = await (await fetch(r.coverDataUrl)).blob();
-      const { blob: webp } = await blobToWebpBlob_(src, { maxSide: 1400, quality: 0.86 });
-      const key = prefix + "cover.webp";
-      const { url } = await cloudPresignPut_({ key, contentType: "image/webp" });
-      await cloudPut_({ url, blob: webp, contentType: "image/webp" });
-      r.coverKey = key;
-      // reduce local DB size
-      // keep coverDataUrl for UI preview, but you may delete it if you want:
-      // delete r.coverDataUrl;
-    }
+    // Cover (always re-upload if we have source)
+if (r.coverDataUrl){
+  const src = await (await fetch(r.coverDataUrl)).blob();
+  const { blob: webp } = await blobToWebpBlob_(src, { maxSide: 1400, quality: 0.86 });
+  const key = prefix + "cover.webp";
+  const { url } = await cloudPresignPut_({ key, contentType: "image/webp" });
+  await cloudPut_({ url, blob: webp, contentType: "image/webp" });
+  r.coverKey = key;
+}
 
-    // Creatives (from dataUrl)
-    for (const c of (r.communities || [])){
-      for (const cr of (c.creatives || [])){
-        if (cr.objectKey) continue;
-        if (!cr.dataUrl) continue;
-        const src = await (await fetch(cr.dataUrl)).blob();
-        const { blob: webp } = await blobToWebpBlob_(src, { maxSide: 2000, quality: 0.86 });
-        const idPart = safeKeyPart_(cr.id || cr.name || "creative");
-        const key = prefix + `creatives/${idPart}.webp`;
-        const { url } = await cloudPresignPut_({ key, contentType: "image/webp" });
-        await cloudPut_({ url, blob: webp, contentType: "image/webp" });
-        cr.objectKey = key;
-        // optionally drop base64 to keep DB light
-        // delete cr.dataUrl;
-      }
-    }
+    // Creatives (always re-upload if we have source)
+for (const c of (r.communities || [])){
+  for (const cr of (c.creatives || [])){
+    if (!cr.dataUrl) continue;
+
+    const src = await (await fetch(cr.dataUrl)).blob();
+    const { blob: webp } = await blobToWebpBlob_(src, { maxSide: 2000, quality: 0.86 });
+
+    const idPart = safeKeyPart_(cr.id || cr.name || "creative");
+    const key = prefix + `creatives/${idPart}.webp`;
+
+    const { url } = await cloudPresignPut_({ key, contentType: "image/webp" });
+    await cloudPut_({ url, blob: webp, contentType: "image/webp" });
+
+    cr.objectKey = key;
+  }
+}
 
     // Snapshot
     const snap = buildSnapshot_(r, prefix);
@@ -481,7 +479,27 @@
     if (a && !t) return a;
     if (!a && t) return t;
     return `${a} - ${t}`;
+  }  function releaseSearchHaystack_(r){
+    const parts = [];
+    if (!r) return "";
+    parts.push(r.releaseId, r.title, r.artists, r.track, r.createdAt, r.updatedAt, r.lastCloudVersion);
+    try{
+      parts.push(fmtDate_(r.createdAt), fmtDate_(r.updatedAt));
+    }catch(e){}
+    for (const c of (r.communities || [])){
+      if (!c) continue;
+      parts.push(c.name, c.vkId, c.communityId);
+    }
+    return String(parts.filter(Boolean).join(" ")).toLowerCase();
   }
+
+  function releaseMatchesQuery_(r, q){
+    const qq = String(q||"").trim().toLowerCase();
+    if (!qq) return true;
+    return releaseSearchHaystack_(r).includes(qq);
+  }
+
+
 
   function formatMoney_(n){
     if (!isFinite(n)) return "—";
@@ -578,6 +596,34 @@ function getDemoTotals_(c){
    *  Init nav
    * -----------------------------*/
   $$(".tabBtn").forEach(b=>b.addEventListener("click", ()=>go_(b.dataset.route)));
+
+  // Search inputs (Releases / History)
+  const releasesSearchEl = $("#releases-search");
+  const releasesSearchClearEl = $("#releases-search-clear");
+  if (releasesSearchEl){
+    releasesSearchEl.addEventListener("input", ()=>renderReleases_());
+  }
+  if (releasesSearchClearEl){
+    releasesSearchClearEl.addEventListener("click", ()=>{
+      if (releasesSearchEl) releasesSearchEl.value = "";
+      renderReleases_();
+      releasesSearchEl && releasesSearchEl.focus();
+    });
+  }
+
+  const historySearchEl = $("#history-search");
+  const historySearchClearEl = $("#history-search-clear");
+  if (historySearchEl){
+    historySearchEl.addEventListener("input", ()=>renderHistory_());
+  }
+  if (historySearchClearEl){
+    historySearchClearEl.addEventListener("click", ()=>{
+      if (historySearchEl) historySearchEl.value = "";
+      renderHistory_();
+      historySearchEl && historySearchEl.focus();
+    });
+  }
+
 
   /** -----------------------------
    *  Releases page
@@ -952,7 +998,6 @@ function getDemoTotals_(c){
     saveDB_();
     renderEditor_();
   });
-
   // Communities
   const commModal = $("#community-modal");
   $("#btn-add-community").addEventListener("click", ()=>{
