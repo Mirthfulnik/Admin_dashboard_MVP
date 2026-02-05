@@ -86,36 +86,23 @@
         <div class="filtersGrid" id="releases-filters" style="margin-top:10px">
           <div class="field">
             <label>Исполнитель</label>
-            <select id="releases-filter-artist"><option value="">Все</option></select>
+            <select id="releases-filter-artist" data-searchable="1"><option value="">Все</option></select>
           </div>
           <div class="field">
             <label>Трек</label>
-            <select id="releases-filter-track"><option value="">Все</option></select>
+            <select id="releases-filter-track" data-searchable="1"><option value="">Все</option></select>
           </div>
           <div class="field">
             <label>Сообщество</label>
-            <select id="releases-filter-community"><option value="">Все</option></select>
+            <select id="releases-filter-community" data-searchable="1"><option value="">Все</option></select>
           </div>
           <div class="field">
             <label>ID сообщества</label>
-            <select id="releases-filter-communityId"><option value="">Все</option></select>
+            <select id="releases-filter-communityId" data-searchable="1"><option value="">Все</option></select>
           </div>
-
-          <div class="field filtersDate">
-            <label>Дата</label>
-            <div class="filtersDateRow">
-              <select id="releases-filter-dateField" class="filtersDateField">
-                <option value="updatedAt">Обновлено</option>
-                <option value="createdAt">Создано</option>
-              </select>
-              <input type="date" id="releases-filter-dateFrom" />
-              <input type="date" id="releases-filter-dateTo" />
-            </div>
-          </div>
-
-          <div class="filtersActions">
-            <button class="iconBtn" id="releases-filters-clear" title="Сбросить фильтры">Очистить</button>
-          </div>
+        </div>
+        <div class="filtersBottomRow">
+          <button class="iconBtn" id="releases-filters-clear" title="Сбросить фильтры">Очистить</button>
         </div>
 <div id="releases-list" class="list"></div>
       </div>
@@ -280,36 +267,23 @@
         <div class="filtersGrid" id="history-filters" style="margin-top:10px">
           <div class="field">
             <label>Исполнитель</label>
-            <select id="history-filter-artist"><option value="">Все</option></select>
+            <select id="history-filter-artist" data-searchable="1"><option value="">Все</option></select>
           </div>
           <div class="field">
             <label>Трек</label>
-            <select id="history-filter-track"><option value="">Все</option></select>
+            <select id="history-filter-track" data-searchable="1"><option value="">Все</option></select>
           </div>
           <div class="field">
             <label>Сообщество</label>
-            <select id="history-filter-community"><option value="">Все</option></select>
+            <select id="history-filter-community" data-searchable="1"><option value="">Все</option></select>
           </div>
           <div class="field">
             <label>ID сообщества</label>
-            <select id="history-filter-communityId"><option value="">Все</option></select>
+            <select id="history-filter-communityId" data-searchable="1"><option value="">Все</option></select>
           </div>
-
-          <div class="field filtersDate">
-            <label>Дата</label>
-            <div class="filtersDateRow">
-              <select id="history-filter-dateField" class="filtersDateField">
-                <option value="updatedAt">Обновлено</option>
-                <option value="createdAt">Создано</option>
-              </select>
-              <input type="date" id="history-filter-dateFrom" />
-              <input type="date" id="history-filter-dateTo" />
-            </div>
-          </div>
-
-          <div class="filtersActions">
-            <button class="iconBtn" id="history-filters-clear" title="Сбросить фильтры">Очистить</button>
-          </div>
+        </div>
+        <div class="filtersBottomRow">
+          <button class="iconBtn" id="history-filters-clear" title="Сбросить фильтры">Очистить</button>
         </div>
 <div id="history-list" class="list"></div>
         <div class="hint">Удаление требует подтверждения названием релиза.</div>
