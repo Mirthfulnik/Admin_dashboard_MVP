@@ -206,6 +206,42 @@
     await cloudWriteJsonKey_(relIndexKey, relIdx);
   }
 
+  // Best-effort repair: if global/per-release index points to a missing data.json,
+  // update indices to the first valid snapshot we managed to load.
+  async function repairCloudPointersBestEffort_(release, { ts, dataKey, prefix }){
+    try{
+      const now = nowIso_();
+
+      // 1) Global index
+      const idx = await cloudReadJsonKeyOrNull_(CLOUD_INDEX_KEY) || { schema: 1, updatedAt: now, releases: [] };
+      idx.schema = idx.schema || 1;
+      idx.updatedAt = now;
+      idx.releases = Array.isArray(idx.releases) ? idx.releases : [];
+
+      const i = idx.releases.findIndex(x => x && x.releaseId === release.releaseId);
+      if (i >= 0){
+        idx.releases[i].lastTs = ts;
+        idx.releases[i].lastDataKey = dataKey;
+        if (!idx.releases[i].updatedAt || idx.releases[i].updatedAt < now) idx.releases[i].updatedAt = now;
+      }
+      await cloudWriteJsonKey_(CLOUD_INDEX_KEY, idx);
+
+      // 2) Per-release index
+      const relIndexKey = CLOUD_RELEASE_INDEX_PREFIX + release.releaseId + ".json";
+      const relIdx = await cloudReadJsonKeyOrNull_(relIndexKey) || { schema: 1, releaseId: release.releaseId, title: release.title, versions: [] };
+      relIdx.schema = relIdx.schema || 1;
+      relIdx.title = release.title;
+      relIdx.versions = Array.isArray(relIdx.versions) ? relIdx.versions : [];
+      relIdx.versions = relIdx.versions.filter(v => v && v.ts !== ts);
+      relIdx.versions.unshift({ ts, dataKey, prefix, createdAt: now });
+      await cloudWriteJsonKey_(relIndexKey, relIdx);
+    }catch(e){
+      // ignore repair errors
+      console.warn("repairCloudPointersBestEffort_ failed:", e);
+    }
+  }
+
+
   async function ensureReleaseHydrated_(releaseId){
     const r = state.db.releases[releaseId];
     if (!r) return null;
@@ -229,7 +265,49 @@
     if (!dataKey) return r; // nothing to hydrate from
 
     const { url } = await cloudPresignGet_({ key: dataKey });
-    const snap = await fetchJsonOrNull_(url);
+    let snap = await fetchJsonOrNull_(url);
+
+    // Fallback: cloud index might point to a missing version (save interrupted / object deleted).
+    if (!snap){
+      try{
+        const list = await cloudCall_({ action: "list", releaseId: r.releaseId });
+        const versions = Array.isArray(list && list.versions) ? list.versions : [];
+        const tried = [dataKey];
+
+        for (const ts of versions){
+          const dk = `releases/${r.releaseId}/versions/${ts}/data.json`;
+          if (dk === dataKey) continue;
+
+          tried.push(dk);
+          try{
+            const { url: u2 } = await cloudPresignGet_({ key: dk });
+            const s2 = await fetchJsonOrNull_(u2);
+            if (s2){
+              snap = s2;
+
+              // repair local pointers to the first valid snapshot we found
+              r.cloudVersions = Array.isArray(r.cloudVersions) ? r.cloudVersions : [];
+              r.cloudVersions = [{ ts, dataKey: dk }].concat(r.cloudVersions.filter(v => v && v.dataKey !== dk));
+              r.lastCloudVersion = ts;
+
+              // best-effort: repair cloud indices so other browsers don't hit 404
+              repairCloudPointersBestEffort_(r, { ts, dataKey: dk, prefix: `releases/${r.releaseId}/versions/${ts}/` }).catch(()=>{});
+
+              break;
+            }
+          }catch(e){
+            // ignore and try next
+          }
+        }
+
+        if (!snap){
+          console.warn("Snapshot missing in cloud. Tried keys:", tried);
+        }
+      }catch(e){
+        console.warn("Cloud list fallback failed:", e);
+      }
+    }
+
     if (!snap) throw new Error("Не удалось загрузить snapshot из облака");
 
     // Apply snapshot
