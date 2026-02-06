@@ -206,42 +206,6 @@
     await cloudWriteJsonKey_(relIndexKey, relIdx);
   }
 
-  // Best-effort repair: if global/per-release index points to a missing data.json,
-  // update indices to the first valid snapshot we managed to load.
-  async function repairCloudPointersBestEffort_(release, { ts, dataKey, prefix }){
-    try{
-      const now = nowIso_();
-
-      // 1) Global index
-      const idx = await cloudReadJsonKeyOrNull_(CLOUD_INDEX_KEY) || { schema: 1, updatedAt: now, releases: [] };
-      idx.schema = idx.schema || 1;
-      idx.updatedAt = now;
-      idx.releases = Array.isArray(idx.releases) ? idx.releases : [];
-
-      const i = idx.releases.findIndex(x => x && x.releaseId === release.releaseId);
-      if (i >= 0){
-        idx.releases[i].lastTs = ts;
-        idx.releases[i].lastDataKey = dataKey;
-        if (!idx.releases[i].updatedAt || idx.releases[i].updatedAt < now) idx.releases[i].updatedAt = now;
-      }
-      await cloudWriteJsonKey_(CLOUD_INDEX_KEY, idx);
-
-      // 2) Per-release index
-      const relIndexKey = CLOUD_RELEASE_INDEX_PREFIX + release.releaseId + ".json";
-      const relIdx = await cloudReadJsonKeyOrNull_(relIndexKey) || { schema: 1, releaseId: release.releaseId, title: release.title, versions: [] };
-      relIdx.schema = relIdx.schema || 1;
-      relIdx.title = release.title;
-      relIdx.versions = Array.isArray(relIdx.versions) ? relIdx.versions : [];
-      relIdx.versions = relIdx.versions.filter(v => v && v.ts !== ts);
-      relIdx.versions.unshift({ ts, dataKey, prefix, createdAt: now });
-      await cloudWriteJsonKey_(relIndexKey, relIdx);
-    }catch(e){
-      // ignore repair errors
-      console.warn("repairCloudPointersBestEffort_ failed:", e);
-    }
-  }
-
-
   async function ensureReleaseHydrated_(releaseId){
     const r = state.db.releases[releaseId];
     if (!r) return null;
@@ -264,51 +228,43 @@
 
     if (!dataKey) return r; // nothing to hydrate from
 
-    const { url } = await cloudPresignGet_({ key: dataKey });
-    let snap = await fetchJsonOrNull_(url);
+    let snap = null;
+    try{
+      const { url } = await cloudPresignGet_({ key: dataKey });
+      snap = await fetchJsonOrNull_(url);
+    }catch(e){
+      // ignore here; we'll try fallback below
+      snap = null;
+    }
 
-    // Fallback: cloud index might point to a missing version (save interrupted / object deleted).
+    // Fallback: index may point to a non-existent version; ask Cloud Function for real versions and try them.
     if (!snap){
+      let tried = [dataKey].filter(Boolean);
       try{
-        const list = await cloudCall_({ action: "list", releaseId: r.releaseId });
-        const versions = Array.isArray(list && list.versions) ? list.versions : [];
-        const tried = [dataKey];
-
-        for (const ts of versions){
-          const dk = `releases/${r.releaseId}/versions/${ts}/data.json`;
-          if (dk === dataKey) continue;
-
-          tried.push(dk);
+        const versions = await cloudListVersions_(releaseId);
+        for (const ver of versions){
+          const key2 = `releases/${releaseId}/versions/${ver}/data.json`;
+          if (tried.includes(key2)) continue;
+          tried.push(key2);
           try{
-            const { url: u2 } = await cloudPresignGet_({ key: dk });
+            const { url: u2 } = await cloudPresignGet_({ key: key2 });
             const s2 = await fetchJsonOrNull_(u2);
             if (s2){
               snap = s2;
-
-              // repair local pointers to the first valid snapshot we found
-              r.cloudVersions = Array.isArray(r.cloudVersions) ? r.cloudVersions : [];
-              r.cloudVersions = [{ ts, dataKey: dk }].concat(r.cloudVersions.filter(v => v && v.dataKey !== dk));
-              r.lastCloudVersion = ts;
-
-              // best-effort: repair cloud indices so other browsers don't hit 404
-              repairCloudPointersBestEffort_(r, { ts, dataKey: dk, prefix: `releases/${r.releaseId}/versions/${ts}/` }).catch(()=>{});
-
+              // rewrite cloud pointer in memory so the next hydration uses the working version first
+              r.cloudVersions = [{ versionId: ver, dataKey: key2, coverKey: `releases/${releaseId}/versions/${ver}/cover.webp` }];
               break;
             }
-          }catch(e){
-            // ignore and try next
-          }
+          }catch(e2){}
         }
-
-        if (!snap){
-          console.warn("Snapshot missing in cloud. Tried keys:", tried);
-        }
-      }catch(e){
-        console.warn("Cloud list fallback failed:", e);
+      }catch(listErr){
+        console.warn("Cloud list fallback failed:", listErr);
+      }
+      if (!snap){
+        console.error("Snapshot missing in cloud. Tried keys:", tried);
+        throw new Error("Не удалось загрузить snapshot из облака");
       }
     }
-
-    if (!snap) throw new Error("Не удалось загрузить snapshot из облака");
 
     // Apply snapshot
     r.title = snap.title || r.title;
@@ -487,6 +443,38 @@ if (r.coverDataUrl){
   await cloudPut_({ url, blob: webp, contentType: "image/webp" });
   r.coverKey = key;
 }
+
+  // List versions for a release (Cloud Function supports GET ?action=list&releaseId=...)
+  async function cloudListVersions_(releaseId){
+    const url = `${CLOUD_API}?action=list&releaseId=${encodeURIComponent(releaseId)}`;
+    const res = await fetch(url, { method: "GET" });
+    const txt = await res.text();
+    let data = {};
+    try { data = JSON.parse(txt || "{}"); } catch(e){}
+    if (!res.ok || data.ok === false){
+      const msg = (data && (data.error || data.errorMessage)) ? (data.error || data.errorMessage) : `Cloud API error (${res.status})`;
+      throw new Error(msg);
+    }
+    return Array.isArray(data.versions) ? data.versions : [];
+  }
+
+  async function cloudDeleteRelease_(releaseId){
+    const data = await cloudCall_({ action: "deleteRelease", releaseId });
+    return !!data.ok;
+  }
+  async function cloudRemoveReleaseFromIndex_(releaseId){
+    // Update global index/releases.json to remove the release
+    const idx = await cloudReadJsonKeyOrNull_(CLOUD_INDEX_KEY) || { schema: 1, releases: [] };
+    idx.schema = idx.schema || 1;
+    idx.releases = (Array.isArray(idx.releases) ? idx.releases : []).filter(x => x && x.releaseId !== releaseId);
+    await cloudWriteJsonKey_(CLOUD_INDEX_KEY, idx);
+    // Best-effort: delete per-release index file (requires Cloud Function support; ignored if not supported)
+    try{
+      await cloudCall_({ action: "deleteKey", key: CLOUD_RELEASE_INDEX_PREFIX + releaseId + ".json" });
+    }catch(e){}
+  }
+
+
 
     // Creatives (always re-upload if we have source)
 for (const c of (r.communities || [])){
@@ -1010,7 +998,6 @@ function getDemoTotals_(c){
 
     const wrap = document.createElement("div");
     wrap.className = "comboSelect";
-
     const input = document.createElement("input");
     input.type = "text";
     input.className = "comboInput";
@@ -1936,7 +1923,7 @@ if (demoRows.length){
     $("#btn-confirm-delete").disabled = !ok;
   });
 
-  $("#btn-confirm-delete").addEventListener("click", ()=>{
+  $("#btn-confirm-delete").addEventListener("click", async ()=>{
     if (!deleteTargetId) return;
     const r = state.db.releases[deleteTargetId];
     const confirmText = ($("#delete-confirm").value||"").trim();
@@ -1944,6 +1931,18 @@ if (demoRows.length){
       alert("Название не совпадает.");
       return;
     }
+
+    // 1) Delete in cloud first (so we don't leave orphaned cloud data)
+    try{
+      await cloudDeleteRelease_(deleteTargetId);
+      await cloudRemoveReleaseFromIndex_(deleteTargetId);
+    }catch(e){
+      console.error(e);
+      alert("Не удалось удалить релиз из облака: " + (e?.message || e));
+      return;
+    }
+
+    // 2) Delete locally
     delete state.db.releases[deleteTargetId];
     saveDB_();
     deleteModal.hidden = true;
@@ -1955,7 +1954,7 @@ if (demoRows.length){
     renderReleases_();
     renderHistory_();
     renderReport_();
-    go_("releases");
+    await go_("releases");
   });
 
   function renderHistory_(){
