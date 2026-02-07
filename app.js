@@ -5,6 +5,16 @@
    - Blocked/статусы не фильтруем
 */
 (function(){
+
+   function syncSmallScreenBlock_(){
+    const el = document.getElementById("smallScreenBlock");
+    if (!el) return;
+    const isSmall = window.matchMedia("(max-width: 980px)").matches;
+    el.hidden = !isSmall;
+  }
+
+  window.addEventListener("resize", syncSmallScreenBlock_);
+  document.addEventListener("DOMContentLoaded", syncSmallScreenBlock_);
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
   const CLOUD_API = "https://functions.yandexcloud.net/d4eflrgebtkcansjrlkj";
