@@ -123,6 +123,19 @@
     await cloudSaveJson_({ key, obj });
   }
 
+  async function cloudRefreshReleaseVersionsFromCloud_(releaseId){
+     const relIndexKey = CLOUD_RELEASE_INDEX_PREFIX + releaseId + ".json";
+     const relIdx = await cloudReadJsonKeyOrNull_(relIndexKey);
+     const versions = Array.isArray(relIdx && relIdx.versions) ? relIdx.versions : [];
+
+  // ожидаем { ts, dataKey, ... } как ты пишешь в cloudUpsertIndexOnSave_
+     const mapped = versions
+    .filter(v => v && v.dataKey)
+    .map(v => ({ ts: v.ts || "", dataKey: v.dataKey }));
+
+     return mapped;
+   }
+
   function cloudMakeLocalStubFromIndex_(meta){
     return {
       releaseId: meta.releaseId,
@@ -245,8 +258,22 @@
     if (!dataKey) return r; // nothing to hydrate from
 
     const { url } = await cloudPresignGet_({ key: dataKey });
-    const snap = await fetchJsonOrNull_(url);
-    if (!snap) throw new Error("Не удалось загрузить snapshot из облака");
+    let snap = await fetchJsonOrNull_(url);
+
+if (!snap) {
+  // snapshot не найден (404) → пробуем обновить список версий из облака и повторить
+  const fresh = await cloudRefreshReleaseVersionsFromCloud_(releaseId);
+  if (fresh.length) {
+    r.cloudVersions = fresh;
+    r.lastCloudVersion = fresh[0].ts || r.lastCloudVersion;
+    saveDB_();
+
+    const { url: url2 } = await cloudPresignGet_({ key: fresh[0].dataKey });
+    snap = await fetchJsonOrNull_(url2);
+  }
+}
+
+if (!snap) throw new Error("Не удалось загрузить snapshot из облака");
 
     // Apply snapshot
     r.title = snap.title || r.title;
