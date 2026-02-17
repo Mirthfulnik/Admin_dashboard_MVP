@@ -738,7 +738,7 @@ select option{color:#000; background:#fff;}
   border-top: 1px solid rgba(0,0,0,.08);
 }
 
-.demoTopCard{ display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
+.demoTopCard{ display:flex; flex-direction:column; justify-content:center; align-items:stretch; text-align:left; }
 .demoTopTitle{
   font-weight: 900;
   font-size: 16px;
@@ -760,7 +760,7 @@ select option{color:#000; background:#fff;}
   display:flex;
   align-items:center;
   gap: 12px;
-  justify-content:center;
+  justify-content:flex-start;
 }
 .demoRank{
   width: 24px;
