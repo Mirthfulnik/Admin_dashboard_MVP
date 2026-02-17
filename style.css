@@ -755,6 +755,7 @@ select option{color:#000; background:#fff;}
   display:grid;
   gap: 14px;
   width: 100%;
+  padding-left: 8px;
 }
 .demoTopRow{
   display:flex;
