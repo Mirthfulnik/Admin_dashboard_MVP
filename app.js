@@ -510,7 +510,10 @@ for (const c of (r.communities || [])){
         const r = releases[rid];
         if (!r) continue;
 
-        if (typeof r.coverDataUrl === "string" && r.coverDataUrl.includes("X-Amz-Algorithm=AWS4-HMAC-SHA256")){
+        if (typeof r.coverDataUrl === "string" && (
+          r.coverDataUrl.includes("X-Amz-Algorithm=AWS4-HMAC-SHA256") ||
+          (r.coverDataUrl.startsWith("data:") && r.coverKey)
+        )){
           r.coverDataUrl = null;
           r._cloudHydrated = false;
         }
@@ -519,7 +522,10 @@ for (const c of (r.communities || [])){
             if (!c || !Array.isArray(c.creatives)) continue;
             for (const cr of c.creatives){
               if (!cr) continue;
-              if (typeof cr.dataUrl === "string" && cr.dataUrl.includes("X-Amz-Algorithm=AWS4-HMAC-SHA256")){
+              if (typeof cr.dataUrl === "string" && (
+                cr.dataUrl.includes("X-Amz-Algorithm=AWS4-HMAC-SHA256") ||
+                (cr.dataUrl.startsWith("data:") && cr.objectKey)
+              )){
                 cr.dataUrl = null;
                 r._cloudHydrated = false;
               }
@@ -531,7 +537,34 @@ for (const c of (r.communities || [])){
       // ignore sanitize errors; fall back to storing as-is
     }
 
-    localStorage.setItem(StoreKey, JSON.stringify(db));
+    try {
+      localStorage.setItem(StoreKey, JSON.stringify(db));
+    } catch(e) {
+      if (e.name === "QuotaExceededError") {
+        // Last resort: strip ALL base64 dataUrls and retry
+        try {
+          const releases2 = db.releases || {};
+          for (const rid in releases2) {
+            const r2 = releases2[rid];
+            if (!r2) continue;
+            if (typeof r2.coverDataUrl === "string" && r2.coverDataUrl.startsWith("data:")) r2.coverDataUrl = null;
+            if (Array.isArray(r2.communities)) {
+              for (const c2 of r2.communities) {
+                if (!c2 || !Array.isArray(c2.creatives)) continue;
+                for (const cr2 of c2.creatives) {
+                  if (cr2 && typeof cr2.dataUrl === "string" && cr2.dataUrl.startsWith("data:")) cr2.dataUrl = null;
+                }
+              }
+            }
+          }
+          localStorage.setItem(StoreKey, JSON.stringify(db));
+        } catch(e2) {
+          console.error("saveDB_: не удалось сохранить даже после очистки base64:", e2);
+        }
+      } else {
+        throw e;
+      }
+    }
   }
   function uid_(){
     // короткий ID для читаемости, но достаточно уникальный для MVP
