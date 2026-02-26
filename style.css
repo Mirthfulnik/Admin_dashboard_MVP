@@ -732,7 +732,11 @@ select option{color:#000; background:#fff;}
   text-align: left;
   font-weight: 750;
   opacity: .9;
-  width: 150px;
+  width: 110px;      
+}
+.demoMiniTable th:not(:first-child),
+.demoMiniTable td:not(:first-child){
+  white-space: nowrap; 
 }
 .demoMiniTable tr + tr td{
   border-top: 1px solid rgba(0,0,0,.08);
