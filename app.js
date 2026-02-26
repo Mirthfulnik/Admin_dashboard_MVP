@@ -2670,7 +2670,7 @@ const capDashParts_ = (s)=>{
             <td>${escapeHtml_(valPct(totalClicks, totalClicks))}</td>
           </tr>
           <tr>
-            <td>Цена за<br/>результат, ₽</td>
+            <td>Цена <br/>результата, ₽</td>
             <td>${escapeHtml_(cost(menSpent, menC))}</td>
             <td>${escapeHtml_(cost(womSpent, womC))}</td>
             <td>${escapeHtml_(cost(menSpent+womSpent+noneSpent, totalClicks))}</td>
