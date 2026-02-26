@@ -1772,9 +1772,9 @@ if (demoRows.length){
 
   // Preview (first 5 rows)
   const demoCostKey =
-    (demoRows?.[0] && ("Цена за результат, ₽" in demoRows[0])) ? "Цена за результат, ₽"
-    : (demoRows?.[0] && ("Цена за результат, Р" in demoRows[0])) ? "Цена за результат, Р"
-    : "Цена за результат, ₽";
+    (demoRows?.[0] && ("Цена результата, ₽" in demoRows[0])) ? "Цена результата, ₽"
+    : (demoRows?.[0] && ("Цена результата, Р" in demoRows[0])) ? "Цена результата, Р"
+    : "Цена результата, ₽";
 
   renderMiniPreview_(dTbl, demoRows.slice(0,5), ["Возраст","Пол","Показы","Клики", demoCostKey]);
 
@@ -2487,7 +2487,7 @@ function renderDetailPageChunk_(r, c, start, perPage, pagesTotal){
     const genderClicks = agg.genderClicks || {};
     const ageGender    = agg.ageGender || {};
 
-    // Spend is needed for "Цена за результат" as CPC (spent / clicks)
+    // Spend is needed for "Цена результата" as CPC (spent / clicks)
     const genderSpent = {};
     for (const row0 of demo){
       const row = normalizeRowKeys_(row0 || {});
@@ -2918,7 +2918,7 @@ async function readXlsx_(file){
     const json = jsonRaw.map(normalizeRowKeys_).map(r=>{
       // aliases for common header variants
       if (r["Потрачено всего, ₽"]==null && r["Потрачено всего, Р"]!=null) r["Потрачено всего, ₽"] = r["Потрачено всего, Р"];
-      if (r["Цена за результат, ₽"]==null && r["Цена за результат, Р"]!=null) r["Цена за результат, ₽"] = r["Цена за результат, Р"];
+      if (r["Цена результата, ₽"]==null && r["Цена результата, Р"]!=null) r["Цена результата, ₽"] = r["Цена результата, Р"];
       return r;
     });
 
@@ -2939,7 +2939,7 @@ async function readXlsx_(file){
   const json = jsonRaw.map(normalizeRowKeys_).map(r=>{
       // aliases for common header variants
       if (r["Потрачено всего, ₽"]==null && r["Потрачено всего, Р"]!=null) r["Потрачено всего, ₽"] = r["Потрачено всего, Р"];
-      if (r["Цена за результат, ₽"]==null && r["Цена за результат, Р"]!=null) r["Цена за результат, ₽"] = r["Цена за результат, Р"];
+      if (r["Цена результата, ₽"]==null && r["Цена результата, Р"]!=null) r["Цена результата, ₽"] = r["Цена результата, Р"];
       return r;
     });
 
@@ -3021,7 +3021,7 @@ async function readXlsx_(file){
       const a = normalizeAge_(row["Возраст"]);
       const impr = num_(row["Показы"]);
       const clicks = num_(row["Клики"]);
-      const cost = numOrNull_(row["Цена за результат, ₽"] ?? row["Цена за результат, Р"] ?? row["Цена за результат"] ?? "");
+      const cost = numOrNull_(row["Цена результата, ₽"] ?? row["Цена результата, Р"] ?? row["Цена результата"] ?? "");
 
       genderImpr[g] = (genderImpr[g]||0) + impr;
       genderClicks[g] = (genderClicks[g]||0) + clicks;
