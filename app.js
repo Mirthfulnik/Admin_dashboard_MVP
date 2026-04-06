@@ -998,7 +998,6 @@ function getDemoTotals_(c){
 });
     }
   }
-
   bindFilters_("releases");
   bindFilters_("history");
   // --- Searchable dropdowns for filters (combobox) ---
@@ -2223,7 +2222,8 @@ if (_btnCloudSave){
     };
 
     let spent=0, shows=0, listens=0, adds=0;
-    const groupIds = new Set();
+    const adIds = new Set();
+    let bestAddPrice = null;
     for (const row0 of rows){
       const row = normalizeRowKeys_(row0 || {});
       spent   += num_(col_(row, ["Потрачено всего, ₽","Потрачено всего, Р","Потрачено всего","Расход, ₽","Расход, Р"]));
@@ -2231,11 +2231,15 @@ if (_btnCloudSave){
       listens += num_(col_(row, ["Начали прослушивание","Прослушивания","Начали прослушивание аудио"]));
       adds    += num_(col_(row, ["Добавили аудио","Добавления аудио","Добавили","Добавления"]));
 
-      const gid = (col_(row, ["ID группы","ID группы объявления","ID группы (объявление)"]) ?? "").toString().trim();
-      if (gid) groupIds.add(gid);
+      const aid = (col_(row, ["ID объявления","ID объявления (объявление)"]) ?? "").toString().trim();
+      if (aid) adIds.add(aid);
+
+      const addPrice = num_(col_(row, ["Цена за добавление аудио, ₽","Цена за добавление аудио, Р","Цена за добавление аудио"]));
+      if (addPrice > 0 && (bestAddPrice === null || addPrice < bestAddPrice)) bestAddPrice = addPrice;
     }
     const avgCost = safeDiv_(spent, adds);
-    return { spent, shows, listens, adds, segments: groupIds.size, avgCost };
+    const avgListenCost = safeDiv_(spent, listens);
+    return { spent, shows, listens, adds, segments: adIds.size, avgCost, avgListenCost, bestAddPrice };
   }
 
   function calcImprClicksFromAdsRows_(rows){
@@ -2272,16 +2276,20 @@ if (_btnCloudSave){
   for (const it of commItems) rowsAll = rowsAll.concat(it.community.adsRows || []);
   const k = calcKpisFromAdsRows_(rowsAll);
 
-  // 1 вертикальная колонка (сверху вниз)
+  // 2 колонки, 4 ряда
   inner.insertAdjacentHTML("beforeend", `
     <div class="kpiCols">
       <div class="kpiCol">
         <div class="kpiRow"><div class="kpiLabel">Потрачено всего</div><div class="kpiValue">${formatMoney2_(k.spent)}</div></div>
-        <div class="kpiRow"><div class="kpiLabel">Показы</div><div class="kpiValue">${formatInt_(k.shows)}</div></div>
         <div class="kpiRow"><div class="kpiLabel">Прослушивания</div><div class="kpiValue">${formatInt_(k.listens)}</div></div>
         <div class="kpiRow"><div class="kpiLabel">Добавления</div><div class="kpiValue">${formatInt_(k.adds)}</div></div>
-        <div class="kpiRow"><div class="kpiLabel">Сегменты</div><div class="kpiValue">${formatInt_(k.segments)}</div></div>
+        <div class="kpiRow"><div class="kpiLabel">Креативы</div><div class="kpiValue">${formatInt_(k.segments)}</div></div>
+      </div>
+      <div class="kpiCol">
+        <div class="kpiRow"><div class="kpiLabel">Показы</div><div class="kpiValue">${formatInt_(k.shows)}</div></div>
+        <div class="kpiRow"><div class="kpiLabel">Ср. стоимость прослушивания</div><div class="kpiValue">${k.avgListenCost==null ? "—" : formatMoney2_(k.avgListenCost)}</div></div>
         <div class="kpiRow"><div class="kpiLabel">Ср. стоимость добавления</div><div class="kpiValue">${k.avgCost==null ? "—" : formatMoney2_(k.avgCost)}</div></div>
+        <div class="kpiRow"><div class="kpiLabel">Лучшая цена добавления</div><div class="kpiValue">${k.bestAddPrice==null ? "—" : formatMoney2_(k.bestAddPrice)}</div></div>
       </div>
     </div>
   `);
