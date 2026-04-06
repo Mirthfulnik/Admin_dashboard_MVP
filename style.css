@@ -403,10 +403,11 @@ select option{color:#000; background:#fff;}
   justify-content:center;  /* центр по горизонтали */
   align-items:center;      /* центр по вертикали -> даст “воздух” снизу */
   padding-bottom: 18px;    /* доп. воздух снизу */
+  gap: 20px;
 }
 
 .kpiCol{
-  width: 460px;            /* было 520 — делаем уже */
+  width: 380px;            /* было 520 — делаем уже */
   display:flex;
   flex-direction:column;
   gap: 16px;               /* было 12 — чуть плотнее */
